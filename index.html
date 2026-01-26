@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Conduct Alchemy — Forged in Resonance</title>
+  <meta name="description" content="Conduct Alchemy is a music imprint exploring sound across cultures and formats — from contemporary releases to modern Bollywood and cinematic storytelling." />
+  <style>
+    :root{--bg:#0b0b0b;--card:#111;--ink:#f3f3f3;--muted:#b9b9b9;--line:#232323;}
+    *{box-sizing:border-box} body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--ink);background:var(--bg);}
+    a{color:var(--ink)} .wrap{max-width:980px;margin:0 auto;padding:28px 18px 64px;}
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px}
+    nav a{margin-left:14px;color:var(--muted);text-decoration:none} nav a:hover{color:var(--ink)}
+    .hero{border:1px solid var(--line);background:linear-gradient(180deg,#0f0f0f,#0b0b0b);padding:28px;border-radius:18px}
+    .kicker{letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-size:12px}
+    h1{margin:.35rem 0 .5rem;font-size:40px;line-height:1.05}
+    .sub{color:var(--muted);max-width:70ch}
+    .cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+    .btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:#151515;text-decoration:none}
+    .btn.primary{background:#f3f3f3;color:#0b0b0b;border-color:#f3f3f3}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;margin-top:18px}
+    .card{grid-column:span 12;border:1px solid var(--line);background:var(--card);padding:16px;border-radius:16px}
+    .card h3{margin:0 0 6px;font-size:18px}
+    .pill{display:inline-block;padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px;margin-bottom:10px}
+    footer{margin-top:32px;color:var(--muted);font-size:13px}
+    @media(min-width:760px){ .card.span6{grid-column:span 6} h1{font-size:54px} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div><strong>Conduct Alchemy</strong></div>
+      <nav>
+        <a href="/music/">Music</a>
+        <a href="/industry/">For Film & Media</a>
+        <a href="/about/">About</a>
+        <a href="/contact/">Contact</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div class="kicker">Forged in Resonance</div>
+      <h1>Conduct Alchemy</h1>
+      <p class="sub">A music imprint exploring sound across cultures and formats — from contemporary Western releases to modern Bollywood and cinematic storytelling. Crafted with modern tools, curated with intention.</p>
+      <div class="cta">
+        <a class="btn primary" href="/music/">Listen</a>
+        <a class="btn" href="/industry/">Licensing</a>
+        <a class="btn" href="/contact/">Enquiries</a>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card span6">
+        <div class="pill">Featured</div>
+        <h3>Rishte Naya</h3>
+        <p class="sub">Modern Bollywood — warm, romantic, contemporary.</p>
+        <a class="btn" href="/music/rishte-naya/">View track</a>
+      </div>
+      <div class="card span6">
+        <div class="pill">Cinematic</div>
+        <h3>Hobey — Main Theme</h3>
+        <p class="sub">Narrative-driven cues for story worlds and screen.</p>
+        <a class="btn" href="/music/hobey-main-theme/">View track</a>
+      </div>
+
+      <div class="card">
+        <div class="pill">For Film & Media</div>
+        <h3>Need versions, edits, instrumentals?</h3>
+        <p class="sub">We provide multiple versions per track (instrumental, alt edits) and can adapt to brief for film, TV, advertising, and digital campaigns.</p>
+        <a class="btn" href="/industry/">Licensing & Enquiries</a>
+      </div>
+    </section>
+
+    <footer>
+      © <span id="y"></span> Conduct Alchemy · Visual concepts by RapidStillz · <a href="/legal/">Legal</a>
+    </footer>
+  </div>
+  <script>document.getElementById('y').textContent=new Date().getFullYear()</script>
+</body>
+</html>
