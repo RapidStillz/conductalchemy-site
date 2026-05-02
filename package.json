@@ -1,32 +1,20 @@
 {
   "name": "conduct-alchemy-site",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --config vite.config.ts --host 0.0.0.0",
-    "build": "vite build --config vite.config.ts",
-    "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.0.5",
-    "typescript": "^5.7.2",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@types/node": "^22.10.2",
-    "@types/react": "^18.2.66",
-    "@types/react-dom": "^18.2.22",
-    "@tailwindcss/vite": "^4.0.0",
-    "tailwindcss": "^4.0.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "framer-motion": "^11.18.2",
-    "lucide-react": "^0.468.0",
-    "tailwind-merge": "^2.6.0",
-    "zod": "^3.24.1",
-    "wouter": "^3.3.5"
+    "react-dom": "^18.2.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "vite": "^5.2.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "typescript": "^5.2.2"
+  }
 }
