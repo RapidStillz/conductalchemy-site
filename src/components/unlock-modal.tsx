@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { unlockTrack } from "@/lib/access";
+import { submitUnlock } from "@/lib/access";
 
 const INTENDED_USE_OPTIONS = [
   "Film",
@@ -33,6 +33,7 @@ export function UnlockModal({
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [submitSource, setSubmitSource] = useState<"api" | "local" | null>(null);
 
   function validate(): boolean {
     const e: Record<string, string> = {};
@@ -45,20 +46,26 @@ export function UnlockModal({
     return Object.keys(e).length === 0;
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
-    unlockTrack({
+
+    const result = await submitUnlock({
       trackId,
+      trackTitle,
       name: name.trim(),
       email: email.trim(),
       intendedUse: intendedUse as IntendedUse,
+      termsAccepted,
     });
+
+    setSubmitSource(result.source);
+    // Brief pause to show feedback before closing
     setTimeout(() => {
       setSubmitting(false);
       onUnlocked();
-    }, 600);
+    }, 500);
   }
 
   const art = isArtefactMode;
@@ -96,7 +103,7 @@ export function UnlockModal({
 
       {/* Panel */}
       <div
-        className={`relative w-full max-w-md z-10 transition-all duration-500 ${
+        className={`relative w-full max-w-md z-10 ${
           art
             ? "bg-[#f5f0e8] border border-[#b5a882]"
             : "bg-[#0d0d0d] border border-border/50"
@@ -165,7 +172,9 @@ export function UnlockModal({
             <div className="relative">
               <select
                 value={intendedUse}
-                onChange={(e) => setIntendedUse(e.target.value as IntendedUse)}
+                onChange={(e) =>
+                  setIntendedUse(e.target.value as IntendedUse)
+                }
                 className={selectCls}
               >
                 <option value="" disabled>
@@ -248,6 +257,13 @@ export function UnlockModal({
           </div>
           {errors.terms && <p className={errorCls}>{errors.terms}</p>}
 
+          {/* Submission mode indicator */}
+          {submitSource && (
+            <p className={`text-[9px] font-sans tracking-widest uppercase ${art ? "text-[#5c4a28]/60" : "text-muted-foreground/60"}`}>
+              {submitSource === "api" ? "✓ Submitted to server" : "✓ Saved locally"}
+            </p>
+          )}
+
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
@@ -260,7 +276,7 @@ export function UnlockModal({
                   : "border-primary text-primary-foreground bg-primary hover:bg-primary/90"
               }`}
             >
-              {submitting ? "Unlocking…" : "Unlock Track"}
+              {submitting ? "Submitting…" : "Unlock Track"}
             </button>
             <button
               type="button"
