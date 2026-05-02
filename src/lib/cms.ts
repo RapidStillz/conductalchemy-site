@@ -16,6 +16,7 @@ export interface Track {
   useCases: string[];
   featured: boolean;
   accessStatus: AccessStatus;
+  audioUrl?: string;
   coverArtUrl?: string;
   createdAt: string;
 }
@@ -77,7 +78,7 @@ const DEFAULT_TRACKS: Track[] = [
       "Vast landscape at golden hour. A lone figure on a ridge. Camera pulls back revealing the scale of the world. Epic reveal.",
     useCases: ["Film", "TV", "Game Trailers", "Advertising", "Sports"],
     featured: true,
-    accessStatus: "Public",
+    accessStatus: "Private",
     createdAt: new Date().toISOString(),
   },
 ];

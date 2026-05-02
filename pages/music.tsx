@@ -1,22 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
 import { getTracks, Track, AccessStatus } from "@/lib/cms";
-import { isTrackUnlocked } from "@/lib/access";
 import { Link } from "wouter";
 
 const ACCESS_BADGE: Record<AccessStatus, string> = {
   Public: "text-green-400 border-green-400/30",
-  Private: "text-amber-400 border-amber-400/30",
+  Private: "text-yellow-400 border-yellow-400/30",
   "NDA / Token Access Required": "text-red-400 border-red-400/30",
 };
-
-function LockIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 14 14" fill="none" className={className}>
-      <rect x="2.5" y="6" width="9" height="7" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M4.5 6V4a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 export default function Music() {
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -37,7 +27,10 @@ export default function Music() {
   const allGenres = useMemo(() => {
     const genres = new Set<string>();
     tracks.forEach((t) => {
-      t.genre.split("/").map((p) => p.trim()).forEach((p) => genres.add(p));
+      t.genre
+        .split("/")
+        .map((p) => p.trim())
+        .forEach((p) => genres.add(p));
     });
     return Array.from(genres).sort();
   }, [tracks]);
@@ -81,9 +74,20 @@ export default function Music() {
               Mood
             </h3>
             <div className="flex flex-wrap gap-2">
-              <button onClick={() => setActiveMood(null)} className={filterBtnCls(!activeMood)}>All</button>
+              <button
+                onClick={() => setActiveMood(null)}
+                className={filterBtnCls(!activeMood)}
+                data-testid="filter-mood-all"
+              >
+                All
+              </button>
               {allMoods.map((mood) => (
-                <button key={mood} onClick={() => setActiveMood(mood === activeMood ? null : mood)} className={filterBtnCls(activeMood === mood)}>
+                <button
+                  key={mood}
+                  onClick={() => setActiveMood(mood === activeMood ? null : mood)}
+                  className={filterBtnCls(activeMood === mood)}
+                  data-testid={`filter-mood-${mood}`}
+                >
                   {mood}
                 </button>
               ))}
@@ -95,9 +99,20 @@ export default function Music() {
               Genre
             </h3>
             <div className="flex flex-wrap gap-2">
-              <button onClick={() => setActiveGenre(null)} className={filterBtnCls(!activeGenre)}>All</button>
+              <button
+                onClick={() => setActiveGenre(null)}
+                className={filterBtnCls(!activeGenre)}
+                data-testid="filter-genre-all"
+              >
+                All
+              </button>
               {allGenres.map((genre) => (
-                <button key={genre} onClick={() => setActiveGenre(genre === activeGenre ? null : genre)} className={filterBtnCls(activeGenre === genre)}>
+                <button
+                  key={genre}
+                  onClick={() => setActiveGenre(genre === activeGenre ? null : genre)}
+                  className={filterBtnCls(activeGenre === genre)}
+                  data-testid={`filter-genre-${genre}`}
+                >
                   {genre}
                 </button>
               ))}
@@ -109,9 +124,20 @@ export default function Music() {
               Use Case
             </h3>
             <div className="flex flex-wrap gap-2">
-              <button onClick={() => setActiveUseCase(null)} className={filterBtnCls(!activeUseCase)}>All</button>
+              <button
+                onClick={() => setActiveUseCase(null)}
+                className={filterBtnCls(!activeUseCase)}
+                data-testid="filter-usecase-all"
+              >
+                All
+              </button>
               {allUseCases.map((uc) => (
-                <button key={uc} onClick={() => setActiveUseCase(uc === activeUseCase ? null : uc)} className={filterBtnCls(activeUseCase === uc)}>
+                <button
+                  key={uc}
+                  onClick={() => setActiveUseCase(uc === activeUseCase ? null : uc)}
+                  className={filterBtnCls(activeUseCase === uc)}
+                  data-testid={`filter-usecase-${uc}`}
+                >
                   {uc}
                 </button>
               ))}
@@ -122,6 +148,7 @@ export default function Music() {
             <button
               onClick={() => { setActiveMood(null); setActiveGenre(null); setActiveUseCase(null); }}
               className="text-[10px] uppercase tracking-widest text-primary/70 hover:text-primary transition-colors"
+              data-testid="button-reset-filters"
             >
               Reset All Filters
             </button>
@@ -138,20 +165,18 @@ export default function Music() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {filteredTracks.map((track) => {
               const accessStatus = track.accessStatus || "Public";
-              const isPrivate = accessStatus === "Private" || accessStatus === "NDA / Token Access Required";
-              const unlocked = isTrackUnlocked(track.id);
-
               return (
                 <div
                   key={track.id}
                   className="group relative border border-border/40 bg-card/20 p-6 flex flex-col hover:border-primary/40 transition-colors duration-300"
+                  data-testid={`card-track-${track.id}`}
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div className="text-[10px] tracking-widest text-primary uppercase">{track.genre}</div>
-                    <span className={`text-[8px] uppercase tracking-widest border px-2 py-1 flex items-center gap-1.5 ${ACCESS_BADGE[accessStatus]}`}>
-                      {isPrivate && !unlocked && (
-                        <LockIcon className="w-2.5 h-2.5" />
-                      )}
+                    <span
+                      className={`text-[8px] uppercase tracking-widest border px-2 py-1 ${ACCESS_BADGE[accessStatus]}`}
+                      data-testid={`badge-access-${track.id}`}
+                    >
                       {accessStatus}
                     </span>
                   </div>
@@ -160,36 +185,25 @@ export default function Music() {
                     <Link
                       href={`/music/${track.id}`}
                       className="before:absolute before:inset-0"
+                      data-testid={`link-track-${track.id}`}
                     >
                       {track.title}
                     </Link>
                   </h2>
 
                   <p className="text-muted-foreground font-serif italic line-clamp-2 text-sm mb-6 flex-1">
-                    {isPrivate && !unlocked
-                      ? track.description.slice(0, 80) + "…"
-                      : track.description}
+                    {track.description}
                   </p>
 
-                  <div className="flex flex-wrap gap-2 mt-auto pt-4 border-t border-border/20 justify-between items-end">
-                    <div className="flex flex-wrap gap-2">
-                      {track.mood.map((m) => (
-                        <span key={m} className="text-[10px] uppercase tracking-widest text-muted-foreground border border-border/40 px-2 py-1">
-                          {m}
-                        </span>
-                      ))}
-                    </div>
-                    {isPrivate && !unlocked && (
-                      <span className="text-[9px] font-sans tracking-widest text-amber-400/80 uppercase flex items-center gap-1">
-                        <LockIcon className="w-2.5 h-2.5" />
-                        Preview
+                  <div className="flex flex-wrap gap-2 mt-auto pt-4 border-t border-border/20">
+                    {track.mood.map((m) => (
+                      <span
+                        key={m}
+                        className="text-[10px] uppercase tracking-widest text-muted-foreground border border-border/40 px-2 py-1"
+                      >
+                        {m}
                       </span>
-                    )}
-                    {isPrivate && unlocked && (
-                      <span className="text-[9px] font-sans tracking-widest text-green-400/80 uppercase">
-                        Unlocked
-                      </span>
-                    )}
+                    ))}
                   </div>
                 </div>
               );
@@ -198,7 +212,9 @@ export default function Music() {
 
           {filteredTracks.length === 0 && (
             <div className="py-24 text-center border border-border/40 bg-card/10">
-              <p className="text-muted-foreground font-serif italic mb-4">No works match these criteria.</p>
+              <p className="text-muted-foreground font-serif italic mb-4">
+                No works match these criteria.
+              </p>
               <button
                 onClick={() => { setActiveMood(null); setActiveGenre(null); setActiveUseCase(null); }}
                 className="text-xs tracking-[0.2em] uppercase text-primary hover:text-primary/80"
