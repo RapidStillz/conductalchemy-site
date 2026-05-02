@@ -1,2 +1,2 @@
-NOTE: This repo will be renamed to 'conduct-alchemy-site' once structure is stabilised.
+NOTE:  This repo will be renamed to 'conduct-alchemy-site' once structure is stabilised.
  
