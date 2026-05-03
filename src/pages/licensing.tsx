@@ -1,9 +1,28 @@
 import { useEffect, useState } from "react";
 import { getSiteContent, SiteContent } from "@/lib/cms";
+import { submitEnquiry, type EnquirySubject, type Enquiry } from "@/lib/enquiries";
 import { useSEO } from "@/hooks/use-seo";
+
+function safeFormatDate(ts: string): string {
+  try {
+    return new Date(ts).toLocaleString("en-GB", {
+      day: "2-digit", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+  } catch {
+    return ts;
+  }
+}
 
 export default function Licensing() {
   const [content, setContent] = useState<SiteContent | null>(null);
+  const [name, setName] = useState("");
+  const [company, setCompany] = useState("");
+  const [email, setEmail] = useState("");
+  const [projectDetails, setProjectDetails] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [receipt, setReceipt] = useState<Enquiry | null>(null);
 
   useSEO({
     title: "Licensing",
@@ -16,16 +35,44 @@ export default function Licensing() {
     setContent(getSiteContent());
   }, []);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  function validate(): boolean {
+    const e: Record<string, string> = {};
+    if (!name.trim()) e.name = "Name is required.";
+    if (!company.trim()) e.company = "Company or production name is required.";
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "A valid email is required.";
+    if (!projectDetails.trim() || projectDetails.trim().length < 10) e.projectDetails = "Please describe your project (at least 10 characters).";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const data = Object.fromEntries(fd.entries());
-    console.log("Licensing Enquiry Submitted:", data);
-    alert("Enquiry submitted. Check console for details.");
-    e.currentTarget.reset();
-  };
+    if (!validate()) return;
+    setSubmitting(true);
+    await new Promise(r => setTimeout(r, 300));
+    const result = submitEnquiry({
+      name: name.trim(),
+      email: email.trim(),
+      subject: "Licensing / Sync" as EnquirySubject,
+      message: company.trim()
+        ? `Company / Production: ${company.trim()}\n\n${projectDetails.trim()}`
+        : projectDetails.trim(),
+    });
+    setSubmitting(false);
+    setReceipt(result);
+  }
+
+  function handleReset() {
+    setReceipt(null);
+    setName(""); setCompany(""); setEmail(""); setProjectDetails("");
+    setErrors({});
+  }
 
   if (!content) return null;
+
+  const inputCls = "w-full bg-background border border-border/50 px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors";
+  const labelCls = "block text-xs font-sans tracking-[0.1em] text-muted-foreground uppercase mb-2";
+  const errCls = "text-[10px] font-sans mt-1.5 text-red-500";
 
   return (
     <div className="container mx-auto px-4 md:px-8 py-16 md:py-24">
@@ -79,27 +126,82 @@ export default function Licensing() {
 
           <div className="bg-card/20 border border-border/40 p-8 md:p-10">
             <h3 className="text-2xl font-serif mb-8">Licensing Enquiry</h3>
-            <form onSubmit={handleSubmit} className="space-y-6">
+
+            {receipt ? (
+              // ---- Receipt ----
               <div>
-                <label htmlFor="name" className="block text-xs font-sans tracking-[0.1em] text-muted-foreground uppercase mb-2">Name</label>
-                <input required type="text" id="name" name="name" className="w-full bg-background border border-border/50 px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors" />
+                <div className="text-[9px] font-sans tracking-[0.3em] uppercase text-green-400 mb-3">Enquiry Received</div>
+                <h4 className="text-xl font-serif mb-2">Thank you, {receipt.name}.</h4>
+                <p className="text-sm font-serif italic text-muted-foreground mb-8 leading-relaxed">
+                  Message sent. Thank you — we'll be in touch at {receipt.email}.
+                </p>
+                <div className="border border-border/30 bg-background/30 px-5 py-4 space-y-3 mb-6">
+                  <div className="text-[9px] font-sans tracking-widest uppercase text-muted-foreground mb-2">Submission summary</div>
+                  {[
+                    { label: "Name", value: receipt.name },
+                    { label: "Email", value: receipt.email },
+                    { label: "Submitted", value: safeFormatDate(receipt.timestamp) },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="flex justify-between gap-4 text-sm">
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground shrink-0">{label}</span>
+                      <span className="font-serif text-right truncate">{value}</span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={handleReset}
+                  className="text-xs uppercase tracking-widest border border-border/60 px-6 py-3 hover:border-primary/50 hover:text-primary transition-colors"
+                >
+                  Submit Another Enquiry
+                </button>
               </div>
-              <div>
-                <label htmlFor="company" className="block text-xs font-sans tracking-[0.1em] text-muted-foreground uppercase mb-2">Company / Production</label>
-                <input required type="text" id="company" name="company" className="w-full bg-background border border-border/50 px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors" />
-              </div>
-              <div>
-                <label htmlFor="email" className="block text-xs font-sans tracking-[0.1em] text-muted-foreground uppercase mb-2">Email Address</label>
-                <input required type="email" id="email" name="email" className="w-full bg-background border border-border/50 px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors" />
-              </div>
-              <div>
-                <label htmlFor="projectDetails" className="block text-xs font-sans tracking-[0.1em] text-muted-foreground uppercase mb-2">Project Details & Track Needs</label>
-                <textarea required id="projectDetails" name="projectDetails" rows={4} className="w-full bg-background border border-border/50 px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors resize-none"></textarea>
-              </div>
-              <button type="submit" className="w-full bg-foreground text-background py-4 text-xs font-sans tracking-[0.2em] uppercase hover:bg-primary transition-colors">
-                Submit Enquiry
-              </button>
-            </form>
+            ) : (
+              // ---- Form ----
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label className={labelCls}>Name</label>
+                  <input
+                    type="text" value={name} onChange={e => setName(e.target.value)}
+                    placeholder="Your full name" autoComplete="name" className={inputCls}
+                  />
+                  {errors.name && <p className={errCls}>{errors.name}</p>}
+                </div>
+                <div>
+                  <label className={labelCls}>Company / Production</label>
+                  <input
+                    type="text" value={company} onChange={e => setCompany(e.target.value)}
+                    placeholder="Studio, agency, or production name" className={inputCls}
+                  />
+                  {errors.company && <p className={errCls}>{errors.company}</p>}
+                </div>
+                <div>
+                  <label className={labelCls}>Email Address</label>
+                  <input
+                    type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    placeholder="your@email.com" autoComplete="email" className={inputCls}
+                  />
+                  {errors.email && <p className={errCls}>{errors.email}</p>}
+                </div>
+                <div>
+                  <label className={labelCls}>Project Details & Track Needs</label>
+                  <textarea
+                    value={projectDetails}
+                    onChange={e => setProjectDetails(e.target.value)}
+                    rows={4}
+                    placeholder="Describe your project, timeline, and the type of music you're looking for…"
+                    className={`${inputCls} resize-none`}
+                  />
+                  {errors.projectDetails && <p className={errCls}>{errors.projectDetails}</p>}
+                </div>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full bg-foreground text-background py-4 text-xs font-sans tracking-[0.2em] uppercase hover:bg-primary transition-colors disabled:opacity-50"
+                >
+                  {submitting ? "Sending…" : "Submit Enquiry"}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </div>

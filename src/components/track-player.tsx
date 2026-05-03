@@ -27,6 +27,10 @@ const BAR_HEIGHTS = Array.from(
     Math.abs(Math.cos(i * 0.4) * 15)
 );
 
+function isGoogleDrive(url: string): boolean {
+  return url.includes("drive.google.com") || url.includes("docs.google.com");
+}
+
 export function TrackPlayer({
   audioUrl,
   isPrivate,
@@ -41,28 +45,37 @@ export function TrackPlayer({
   const [duration, setDuration] = useState(0);
   const [previewExpired, setPreviewExpired] = useState(false);
   const [hasAudio, setHasAudio] = useState(false);
+  const [audioError, setAudioError] = useState(false);
 
   const previewOnly = isPrivate && !isUnlocked;
   const limit = previewOnly ? PREVIEW_SECONDS : Infinity;
-
   const art = isArtefactMode;
+  const gdrive = !!(audioUrl && isGoogleDrive(audioUrl));
 
   useEffect(() => {
+    setHasAudio(false);
+    setAudioError(false);
+    setPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setPreviewExpired(false);
+
     if (!audioUrl) return;
+
     const audio = new Audio(audioUrl);
     audioRef.current = audio;
-    setHasAudio(true);
 
-    audio.addEventListener("loadedmetadata", () => {
-      setDuration(audio.duration);
-    });
-    audio.addEventListener("timeupdate", () => {
-      setCurrentTime(audio.currentTime);
-    });
-    audio.addEventListener("ended", () => {
-      setPlaying(false);
-      setCurrentTime(0);
-    });
+    const onCanPlay = () => { setHasAudio(true); setAudioError(false); };
+    const onMetadata = () => { setDuration(audio.duration); setHasAudio(true); };
+    const onTimeUpdate = () => { setCurrentTime(audio.currentTime); };
+    const onEnded = () => { setPlaying(false); setCurrentTime(0); };
+    const onError = () => { setAudioError(true); setHasAudio(false); setPlaying(false); };
+
+    audio.addEventListener("canplay", onCanPlay);
+    audio.addEventListener("loadedmetadata", onMetadata);
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("error", onError);
 
     return () => {
       audio.pause();
@@ -106,7 +119,11 @@ export function TrackPlayer({
         onRequestUnlock();
         return;
       }
-      audio.play().catch(() => {});
+      audio.play().catch(() => {
+        setAudioError(true);
+        setHasAudio(false);
+        setPlaying(false);
+      });
       setPlaying(true);
     }
   }
@@ -136,179 +153,210 @@ export function TrackPlayer({
 
   return (
     <div
-      className={`border p-6 space-y-5 ${
+      className={`border space-y-5 ${
         art
           ? "border-[#1a1510]/15 bg-[#ede5d0]"
           : "border-border/40 bg-card/30"
       }`}
     >
-      {/* Status label */}
-      <div className="flex items-center justify-between">
-        <div className={`text-[9px] font-sans tracking-[0.25em] uppercase ${textMuted}`}>
-          {!isPrivate && "Full Access"}
-          {isPrivate && !isUnlocked && !previewExpired && `Preview · ${formatTime(PREVIEW_SECONDS)} available`}
-          {isPrivate && !isUnlocked && previewExpired && "Preview ended"}
-          {isPrivate && isUnlocked && (
-            <span className={`flex items-center gap-1.5 ${textPrimary}`}>
-              <svg viewBox="0 0 12 12" fill="none" className="w-2.5 h-2.5">
-                <rect x="2" y="5" width="8" height="6" rx="0.5" stroke="currentColor" strokeWidth="1"/>
-                <path d="M4 5V3.5a2 2 0 014 0V5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-              </svg>
-              Full Access Unlocked
-            </span>
-          )}
+      {/* Google Drive warning banner */}
+      {gdrive && !audioError && (
+        <div className={`px-6 pt-5 flex items-start gap-3`}>
+          <span className={`text-sm shrink-0 mt-0.5 ${art ? "text-[#8a6e3a]" : "text-amber-400"}`}>⚠</span>
+          <p className={`text-[10px] font-sans leading-relaxed ${art ? "text-[#5c4a28]/80" : "text-amber-400/80"}`}>
+            Google Drive links may be blocked by browser streaming/CORS policies. For production, use Cloudflare R2 or a direct MP3 URL.
+          </p>
         </div>
+      )}
 
-        {isPrivate && !isUnlocked && (
-          <button
-            onClick={onRequestUnlock}
-            className={`text-[9px] font-sans tracking-[0.2em] uppercase border px-3 py-1.5 transition-colors ${
-              art
-                ? "border-[#8a6e3a] text-[#5c4a28] hover:bg-[#8a6e3a] hover:text-white"
-                : "border-primary/60 text-primary hover:bg-primary hover:text-primary-foreground"
-            }`}
-          >
-            Unlock Full Track
-          </button>
-        )}
-      </div>
-
-      {/* Waveform visualiser */}
-      <div className="relative h-16 flex items-end gap-[2px] overflow-hidden select-none">
-        {BAR_HEIGHTS.map((h, i) => {
-          const barProgress = ((i + 1) / BAR_COUNT) * 100;
-          const isFilled = barProgress <= progress;
-          const isPreviewZone = previewOnly && barProgress <= previewProgress;
-
-          return (
-            <div
-              key={i}
-              className="flex-1 rounded-sm transition-colors duration-100"
-              style={{
-                height: `${h}%`,
-                background: isFilled
-                  ? primaryColor
-                  : isPreviewZone && !isUnlocked
-                  ? art ? "rgba(138,110,58,0.25)" : "rgba(var(--primary-rgb, 180,150,80),0.25)"
-                  : mutedColor,
-                opacity: previewOnly && !isPreviewZone ? 0.35 : 1,
-              }}
-            />
-          );
-        })}
-
-        {/* Preview cap line */}
-        {previewOnly && duration > 0 && (
-          <div
-            className="absolute top-0 bottom-0 w-px"
-            style={{
-              left: `${previewProgress}%`,
-              background: art ? "rgba(138,110,58,0.6)" : "rgba(var(--primary-rgb,180,150,80),0.6)",
-            }}
-          />
-        )}
-
-        {/* Overlay when preview expired */}
-        {previewExpired && (
-          <button
-            onClick={onRequestUnlock}
-            className="absolute inset-0 flex items-center justify-center"
-            style={{
-              background: art
-                ? "rgba(245,240,232,0.85)"
-                : "rgba(13,13,13,0.85)",
-            }}
-          >
-            <span
-              className={`text-[10px] font-sans tracking-[0.2em] uppercase flex items-center gap-2 ${
-                art ? "text-[#5c4a28]" : "text-primary"
-              }`}
-            >
-              <svg viewBox="0 0 14 14" fill="none" className="w-3 h-3">
-                <rect x="2.5" y="6" width="9" height="7" rx="0.5" stroke="currentColor" strokeWidth="1.2"/>
-                <path d="M4.5 6V4a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-              </svg>
-              Unlock to continue
-            </span>
-          </button>
-        )}
-
-        {/* Clickable seek area */}
-        {hasAudio && !previewExpired && (
-          <div
-            className="absolute inset-0 cursor-pointer"
-            onClick={handleSeek}
-          />
-        )}
-      </div>
-
-      {/* Controls row */}
-      <div className="flex items-center gap-5">
-        {/* Play / Pause */}
-        <button
-          onClick={togglePlay}
-          className={`w-10 h-10 border flex items-center justify-center shrink-0 transition-colors ${
-            art
-              ? "border-[#b5a882] text-[#5c4a28] hover:bg-[#b5a882]/20"
-              : "border-border/60 text-foreground hover:border-primary/60"
-          }`}
-          aria-label={playing ? "Pause" : "Play"}
-        >
-          {playing ? (
-            <svg viewBox="0 0 14 14" fill="none" className="w-4 h-4">
-              <rect x="3" y="2" width="3" height="10" rx="0.5" fill="currentColor"/>
-              <rect x="8" y="2" width="3" height="10" rx="0.5" fill="currentColor"/>
-            </svg>
-          ) : (
-            <svg viewBox="0 0 14 14" fill="none" className="w-4 h-4">
-              <path d="M4 2.5l7 4.5-7 4.5V2.5z" fill="currentColor"/>
-            </svg>
-          )}
-        </button>
-
-        {/* Progress bar */}
-        <div className="flex-1 space-y-1.5">
-          <div
-            className={`h-[2px] relative ${art ? "bg-[#1a1510]/15" : "bg-border/40"}`}
-            onClick={hasAudio ? handleSeek : undefined}
-            style={{ cursor: hasAudio ? "pointer" : "default" }}
-          >
-            <div
-              className="absolute left-0 top-0 h-full transition-all"
-              style={{ width: `${progress}%`, background: primaryColor }}
-            />
-            {previewOnly && (
-              <div
-                className="absolute top-0 h-full opacity-40"
-                style={{
-                  left: `${previewProgress}%`,
-                  right: 0,
-                  background: art ? "#8a6e3a" : "var(--primary)",
-                  opacity: 0.12,
-                }}
-              />
+      <div className="p-6 space-y-5">
+        {/* Status label */}
+        <div className="flex items-center justify-between">
+          <div className={`text-[9px] font-sans tracking-[0.25em] uppercase ${textMuted}`}>
+            {!isPrivate && "Full Access"}
+            {isPrivate && !isUnlocked && !previewExpired && `Preview · ${formatTime(PREVIEW_SECONDS)} available`}
+            {isPrivate && !isUnlocked && previewExpired && "Preview ended"}
+            {isPrivate && isUnlocked && (
+              <span className={`flex items-center gap-1.5 ${textPrimary}`}>
+                <svg viewBox="0 0 12 12" fill="none" className="w-2.5 h-2.5">
+                  <rect x="2" y="5" width="8" height="6" rx="0.5" stroke="currentColor" strokeWidth="1"/>
+                  <path d="M4 5V3.5a2 2 0 014 0V5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+                </svg>
+                Full Access Unlocked
+              </span>
             )}
           </div>
-          <div className={`flex justify-between text-[9px] font-sans ${textMuted}`}>
-            <span>{formatTime(currentTime)}</span>
-            <span>
-              {previewOnly
-                ? `${formatTime(PREVIEW_SECONDS)} preview`
-                : duration > 0
-                ? formatTime(duration)
-                : trackTitle}
-            </span>
+
+          {isPrivate && !isUnlocked && (
+            <button
+              onClick={onRequestUnlock}
+              className={`text-[9px] font-sans tracking-[0.2em] uppercase border px-3 py-1.5 transition-colors ${
+                art
+                  ? "border-[#8a6e3a] text-[#5c4a28] hover:bg-[#8a6e3a] hover:text-white"
+                  : "border-primary/60 text-primary hover:bg-primary hover:text-primary-foreground"
+              }`}
+            >
+              Unlock Full Track
+            </button>
+          )}
+        </div>
+
+        {/* Waveform visualiser */}
+        <div className="relative h-16 flex items-end gap-[2px] overflow-hidden select-none">
+          {BAR_HEIGHTS.map((h, i) => {
+            const barProgress = ((i + 1) / BAR_COUNT) * 100;
+            const isFilled = barProgress <= progress;
+            const isPreviewZone = previewOnly && barProgress <= previewProgress;
+
+            return (
+              <div
+                key={i}
+                className="flex-1 rounded-sm transition-colors duration-100"
+                style={{
+                  height: `${h}%`,
+                  background: isFilled
+                    ? primaryColor
+                    : isPreviewZone && !isUnlocked
+                    ? art ? "rgba(138,110,58,0.25)" : "rgba(var(--primary-rgb, 180,150,80),0.25)"
+                    : mutedColor,
+                  opacity: previewOnly && !isPreviewZone ? 0.35 : 1,
+                }}
+              />
+            );
+          })}
+
+          {/* Preview cap line */}
+          {previewOnly && duration > 0 && (
+            <div
+              className="absolute top-0 bottom-0 w-px"
+              style={{
+                left: `${previewProgress}%`,
+                background: art ? "rgba(138,110,58,0.6)" : "rgba(var(--primary-rgb,180,150,80),0.6)",
+              }}
+            />
+          )}
+
+          {/* Overlay when preview expired */}
+          {previewExpired && (
+            <button
+              onClick={onRequestUnlock}
+              className="absolute inset-0 flex items-center justify-center"
+              style={{
+                background: art
+                  ? "rgba(245,240,232,0.85)"
+                  : "rgba(13,13,13,0.85)",
+              }}
+            >
+              <span
+                className={`text-[10px] font-sans tracking-[0.2em] uppercase flex items-center gap-2 ${
+                  art ? "text-[#5c4a28]" : "text-primary"
+                }`}
+              >
+                <svg viewBox="0 0 14 14" fill="none" className="w-3 h-3">
+                  <rect x="2.5" y="6" width="9" height="7" rx="0.5" stroke="currentColor" strokeWidth="1.2"/>
+                  <path d="M4.5 6V4a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                </svg>
+                Unlock to continue
+              </span>
+            </button>
+          )}
+
+          {/* Clickable seek area */}
+          {hasAudio && !previewExpired && (
+            <div
+              className="absolute inset-0 cursor-pointer"
+              onClick={handleSeek}
+            />
+          )}
+        </div>
+
+        {/* Controls row */}
+        <div className="flex items-center gap-5">
+          {/* Play / Pause */}
+          <button
+            onClick={togglePlay}
+            disabled={audioError}
+            className={`w-10 h-10 border flex items-center justify-center shrink-0 transition-colors disabled:opacity-30 ${
+              art
+                ? "border-[#b5a882] text-[#5c4a28] hover:bg-[#b5a882]/20"
+                : "border-border/60 text-foreground hover:border-primary/60"
+            }`}
+            aria-label={playing ? "Pause" : "Play"}
+          >
+            {playing ? (
+              <svg viewBox="0 0 14 14" fill="none" className="w-4 h-4">
+                <rect x="3" y="2" width="3" height="10" rx="0.5" fill="currentColor"/>
+                <rect x="8" y="2" width="3" height="10" rx="0.5" fill="currentColor"/>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 14 14" fill="none" className="w-4 h-4">
+                <path d="M4 2.5l7 4.5-7 4.5V2.5z" fill="currentColor"/>
+              </svg>
+            )}
+          </button>
+
+          {/* Progress bar */}
+          <div className="flex-1 space-y-1.5">
+            <div
+              className={`h-[2px] relative ${art ? "bg-[#1a1510]/15" : "bg-border/40"}`}
+              onClick={hasAudio ? handleSeek : undefined}
+              style={{ cursor: hasAudio ? "pointer" : "default" }}
+            >
+              <div
+                className="absolute left-0 top-0 h-full transition-all"
+                style={{ width: `${progress}%`, background: primaryColor }}
+              />
+              {previewOnly && (
+                <div
+                  className="absolute top-0 h-full opacity-40"
+                  style={{
+                    left: `${previewProgress}%`,
+                    right: 0,
+                    background: art ? "#8a6e3a" : "var(--primary)",
+                    opacity: 0.12,
+                  }}
+                />
+              )}
+            </div>
+            <div className={`flex justify-between text-[9px] font-sans ${textMuted}`}>
+              <span>{formatTime(currentTime)}</span>
+              <span>
+                {previewOnly
+                  ? `${formatTime(PREVIEW_SECONDS)} preview`
+                  : duration > 0
+                  ? formatTime(duration)
+                  : trackTitle}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {!hasAudio && (
-        <p className={`text-[10px] font-sans leading-relaxed ${textMuted}`}>
-          {previewOnly
-            ? "Audio preview available upon upload. Unlock now to receive full stems and masters when released."
-            : "Audio file not yet attached. Contact us for stems, masters, and sync-ready files."}
-        </p>
-      )}
+        {/* Audio error message */}
+        {audioError && (
+          <div className={`border px-4 py-3 flex items-start gap-3 ${art ? "border-[#1a1510]/20 bg-[#ede5d0]" : "border-red-400/30 bg-red-400/5"}`}>
+            <span className={`text-sm shrink-0 mt-0.5 ${art ? "text-[#5c4a28]" : "text-red-400"}`}>✗</span>
+            <div className="space-y-1">
+              <p className={`text-[10px] font-sans leading-relaxed ${art ? "text-[#3a2e1e]/70" : "text-red-400"}`}>
+                Audio failed to load. The URL may be inaccessible or not a streamable audio file.
+              </p>
+              {gdrive && (
+                <p className={`text-[10px] font-sans leading-relaxed ${art ? "text-[#5c4a28]/70" : "text-amber-400/80"}`}>
+                  Google Drive links are blocked by browser CORS policies. Use Cloudflare R2 or a direct .mp3 URL for production.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* No audio URL */}
+        {!audioUrl && !audioError && (
+          <p className={`text-[10px] font-sans leading-relaxed ${textMuted}`}>
+            {previewOnly
+              ? "Audio preview available upon upload. Unlock now to receive full stems and masters when released."
+              : "Audio file not yet attached. Contact us for stems, masters, and sync-ready files."}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

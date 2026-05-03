@@ -16,6 +16,7 @@ import {
   UnlockRecord, fetchSubmissions, getLocalSubmissions, revokeLocalAccess,
 } from "@/lib/access";
 import { validateMediaUrl, type MediaValidation } from "@/lib/media";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { IS_MOCK_MODE } from "@/lib/api-config";
 import {
   getAnalyticsSummary, clearPageViews, type AnalyticsSummary,
@@ -287,6 +288,15 @@ export default function Admin() {
   const [previewErr, setPreviewErr] = useState(false);
   const [imgState, setImgState] = useState<"idle" | "loading" | "ok" | "error">("idle");
 
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    variant?: "danger" | "warning" | "default";
+    onConfirm: () => void;
+  } | null>(null);
+
   useEffect(() => {
     setTracks(getDraftTracks());
     setContent(getDraftSiteContent());
@@ -373,6 +383,25 @@ export default function Admin() {
   }, [tracks, submissions]);
 
   // -------------------------------------------------------------------------
+  // Confirm dialog helpers
+  // -------------------------------------------------------------------------
+
+  function ask(
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    opts?: { confirmLabel?: string; variant?: "danger" | "warning" | "default" }
+  ) {
+    setConfirmState({ title, message, onConfirm, ...opts });
+    setConfirmOpen(true);
+  }
+
+  function closeConfirm() {
+    setConfirmOpen(false);
+    setConfirmState(null);
+  }
+
+  // -------------------------------------------------------------------------
   // Track CRUD — saves as DRAFT
   // -------------------------------------------------------------------------
 
@@ -447,11 +476,17 @@ export default function Admin() {
   };
 
   const handleDeleteTrack = (id: string) => {
-    if (!confirm("Delete this track from the draft? This cannot be undone.")) return;
-    const updated = tracks.filter(t => t.id !== id);
-    setTracks(updated);
-    saveDraftTracks(updated);
-    setHasDraft(true);
+    ask(
+      "Delete Track",
+      "Remove this track from the draft? This cannot be undone.",
+      () => {
+        const updated = tracks.filter(t => t.id !== id);
+        setTracks(updated);
+        saveDraftTracks(updated);
+        setHasDraft(true);
+      },
+      { variant: "danger", confirmLabel: "Delete" }
+    );
   };
 
   // -------------------------------------------------------------------------
@@ -504,38 +539,62 @@ export default function Admin() {
   // -------------------------------------------------------------------------
 
   const handlePublishAll = () => {
-    if (!confirm("Publish all draft changes? The public site will be updated immediately.")) return;
-    publishAll();
-    setHasDraft(false);
-    setTrackHistory(getTrackHistory());
-    setContentHistory(getSiteContentHistory());
-    setPublishSuccess(true);
-    setTimeout(() => setPublishSuccess(false), 4000);
+    ask(
+      "Publish Changes",
+      "Publish all draft changes? The public site will be updated immediately.",
+      () => {
+        publishAll();
+        setHasDraft(false);
+        setTrackHistory(getTrackHistory());
+        setContentHistory(getSiteContentHistory());
+        setPublishSuccess(true);
+        setTimeout(() => setPublishSuccess(false), 4000);
+      },
+      { variant: "warning", confirmLabel: "Publish" }
+    );
   };
 
   const handleDiscardDraft = () => {
-    if (!confirm("Discard all unpublished changes and revert to the last published version?")) return;
-    discardDraft();
-    setTracks(getDraftTracks());
-    setContent(getDraftSiteContent());
-    setHasDraft(false);
+    ask(
+      "Discard Draft",
+      "Discard all unpublished changes and revert to the last published version?",
+      () => {
+        discardDraft();
+        setTracks(getDraftTracks());
+        setContent(getDraftSiteContent());
+        setHasDraft(false);
+      },
+      { variant: "danger", confirmLabel: "Discard" }
+    );
   };
 
   const handleRollbackTracks = (entry: HistoryEntry<Track[]>) => {
-    if (!confirm(`Restore catalogue version from ${safeFormatDate(entry.publishedAt)}?\nThis will become the new published version.`)) return;
-    rollbackTracks(entry);
-    const restored = getDraftTracks();
-    setTracks(restored);
-    setHasDraft(false);
-    setTrackHistory(getTrackHistory());
+    ask(
+      "Restore Version",
+      `Restore catalogue version from ${safeFormatDate(entry.publishedAt)}? This will become the new published version.`,
+      () => {
+        rollbackTracks(entry);
+        const restored = getDraftTracks();
+        setTracks(restored);
+        setHasDraft(false);
+        setTrackHistory(getTrackHistory());
+      },
+      { variant: "warning", confirmLabel: "Restore" }
+    );
   };
 
   const handleRollbackContent = (entry: HistoryEntry<SiteContent>) => {
-    if (!confirm(`Restore content version from ${safeFormatDate(entry.publishedAt)}?`)) return;
-    rollbackSiteContent(entry);
-    setContent(getDraftSiteContent());
-    setHasDraft(false);
-    setContentHistory(getSiteContentHistory());
+    ask(
+      "Restore Content",
+      `Restore content version from ${safeFormatDate(entry.publishedAt)}?`,
+      () => {
+        rollbackSiteContent(entry);
+        setContent(getDraftSiteContent());
+        setHasDraft(false);
+        setContentHistory(getSiteContentHistory());
+      },
+      { variant: "warning", confirmLabel: "Restore" }
+    );
   };
 
   // -------------------------------------------------------------------------
@@ -556,42 +615,52 @@ export default function Admin() {
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const confirmed = confirm(
-      `Import "${file.name}"?\n\nThis will overwrite your current tracks and site content. Any unpublished drafts will also be replaced.\n\nMake sure you have exported a backup before continuing.`
-    );
-    if (!confirmed) { e.target.value = ""; return; }
-    setImportStatus("Reading file...");
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const data = JSON.parse(ev.target?.result as string);
-        if (data.tracks && Array.isArray(data.tracks)) {
-          saveTracks(data.tracks);
-          saveDraftTracks(data.tracks);
-          setTracks(data.tracks);
-        }
-        if (data.siteContent) {
-          saveSiteContent(data.siteContent);
-          saveDraftSiteContent(data.siteContent);
-          setContent(data.siteContent);
-        }
-        setHasDraft(false);
-        setImportStatus("Import successful — content published directly.");
-        setTimeout(() => setImportStatus(null), 3000);
-      } catch {
-        setImportStatus("Error: Invalid JSON file.");
-        setTimeout(() => setImportStatus(null), 5000);
-      }
-    };
-    reader.readAsText(file);
+    const fileName = file.name;
+    const fileRef = file;
     e.target.value = "";
+    ask(
+      "Import Backup",
+      `Import "${fileName}"? This will overwrite your current tracks and site content, including any unpublished drafts. Make sure you have an export backup before continuing.`,
+      () => {
+        setImportStatus("Reading file...");
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const data = JSON.parse(ev.target?.result as string);
+            if (data.tracks && Array.isArray(data.tracks)) {
+              saveTracks(data.tracks);
+              saveDraftTracks(data.tracks);
+              setTracks(data.tracks);
+            }
+            if (data.siteContent) {
+              saveSiteContent(data.siteContent);
+              saveDraftSiteContent(data.siteContent);
+              setContent(data.siteContent);
+            }
+            setHasDraft(false);
+            setImportStatus("Import successful — content published directly.");
+            setTimeout(() => setImportStatus(null), 3000);
+          } catch {
+            setImportStatus("Error: Invalid JSON file.");
+            setTimeout(() => setImportStatus(null), 5000);
+          }
+        };
+        reader.readAsText(fileRef);
+      },
+      { variant: "warning", confirmLabel: "Import & Overwrite" }
+    );
   };
 
   const handleRevoke = (rec: UnlockRecord) => {
-    if (confirm(`Revoke local access for "${rec.trackTitle}"?`)) {
-      revokeLocalAccess(rec.trackId);
-      loadSubmissions();
-    }
+    ask(
+      "Revoke Access",
+      `Revoke local access for "${rec.trackTitle}"?`,
+      () => {
+        revokeLocalAccess(rec.trackId);
+        loadSubmissions();
+      },
+      { variant: "danger", confirmLabel: "Revoke" }
+    );
   };
 
   if (!siteContent) return null;
@@ -620,6 +689,16 @@ export default function Admin() {
 
   return (
     <div className="container mx-auto px-4 py-16 max-w-6xl">
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title={confirmState?.title ?? ""}
+        message={confirmState?.message ?? ""}
+        confirmLabel={confirmState?.confirmLabel}
+        variant={confirmState?.variant}
+        onConfirm={() => { confirmState?.onConfirm(); }}
+        onCancel={closeConfirm}
+      />
 
       {/* ================================================================== */}
       {/* DRAFT WARNING BANNER                                                 */}
@@ -1489,9 +1568,12 @@ export default function Admin() {
 
             <div>
               <label className={`${labelCls} mb-2`}>Direct Audio URL — Full Track</label>
+              <p className="text-[9px] font-sans text-muted-foreground/50 mb-2 leading-relaxed">
+                Audio player requires a direct .mp3, .wav or streamable audio URL. Google Drive and Suno page links may not stream reliably.
+              </p>
               <input
                 type="url"
-                placeholder="https://example.com/track.mp3"
+                placeholder="https://example.com/track.mp3  or  https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
                 value={testAudioUrl}
                 onChange={e => { setTestAudioUrl(e.target.value); setAudioErr(false); }}
                 className={inputCls}
@@ -1823,7 +1905,7 @@ export default function Admin() {
                             Reply via Email
                           </a>
                           <button
-                            onClick={() => { if (confirm("Delete this enquiry?")) { deleteEnquiry(e.id); setEnquiries(getEnquiries()); setUnreadCount(getUnreadCount()); setExpandedEnquiry(null); } }}
+                            onClick={() => ask("Delete Enquiry", "Delete this enquiry? This cannot be undone.", () => { deleteEnquiry(e.id); setEnquiries(getEnquiries()); setUnreadCount(getUnreadCount()); setExpandedEnquiry(null); }, { variant: "danger", confirmLabel: "Delete" })}
                             className="text-[10px] uppercase tracking-widest border border-red-500/30 text-red-400/70 px-4 py-2 hover:bg-red-500/10 transition-colors"
                           >
                             Delete
@@ -1851,7 +1933,7 @@ export default function Admin() {
               </p>
             </div>
             <button
-              onClick={() => { if (confirm("Clear all traffic data for this browser?")) { clearPageViews(); setAnalytics(getAnalyticsSummary()); } }}
+              onClick={() => ask("Clear Traffic Data", "Clear all traffic data for this browser? This cannot be undone.", () => { clearPageViews(); setAnalytics(getAnalyticsSummary()); }, { variant: "danger", confirmLabel: "Clear" })}
               className="text-[10px] uppercase tracking-widest border border-border/50 px-4 py-2 hover:border-red-400/50 hover:text-red-400 transition-colors"
             >
               Clear Data

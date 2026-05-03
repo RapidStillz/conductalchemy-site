@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getTrack, getPreviewTracks, Track, AccessStatus, type SocialLinks } from "@/lib/cms";
 import { isTrackUnlocked } from "@/lib/access";
-import { getVideoEmbedUrl } from "@/lib/media";
+import { getVideoEmbedUrl, isGoogleDriveUrl } from "@/lib/media";
 import { useSEO } from "@/hooks/use-seo";
 import { useRoute, Link } from "wouter";
 import { TrackPlayer } from "@/components/track-player";
@@ -137,6 +137,7 @@ export default function TrackDetail() {
   const badge = isArtefactMode ? ACCESS_BADGE[accessStatus] : ACCESS_BADGE_DARK[accessStatus];
   const art = isArtefactMode;
   const embedUrl = track.videoUrl ? getVideoEmbedUrl(track.videoUrl) : null;
+  const hasUnsupportedVideoUrl = !!(track.videoUrl && !embedUrl);
   const hasSocialLinks = track.socialLinks && Object.values(track.socialLinks).some(Boolean);
 
   return (
@@ -240,7 +241,7 @@ export default function TrackDetail() {
             </div>
 
             {/* Video Embed */}
-            {embedUrl && (!isPrivate || unlocked) && (
+            {(!isPrivate || unlocked) && embedUrl && (
               <div className="mb-16">
                 <h2 className={`text-xs font-sans tracking-[0.2em] uppercase mb-6 ${art ? "text-[#1a1510]/50" : "text-muted-foreground"}`}>Video</h2>
                 <div className="relative w-full aspect-video border border-border/30 overflow-hidden">
@@ -252,6 +253,21 @@ export default function TrackDetail() {
                     className="absolute inset-0 w-full h-full"
                     loading="lazy"
                   />
+                </div>
+              </div>
+            )}
+
+            {/* Unsupported video URL */}
+            {(!isPrivate || unlocked) && hasUnsupportedVideoUrl && (
+              <div className="mb-16">
+                <h2 className={`text-xs font-sans tracking-[0.2em] uppercase mb-6 ${art ? "text-[#1a1510]/50" : "text-muted-foreground"}`}>Video</h2>
+                <div className={`border px-5 py-4 flex items-start gap-3 ${art ? "border-[#1a1510]/20 bg-[#ede5d0]" : "border-amber-400/20 bg-amber-400/5"}`}>
+                  <span className={`text-sm shrink-0 mt-0.5 ${art ? "text-[#5c4a28]" : "text-amber-400"}`}>⚠</span>
+                  <p className={`text-xs font-sans leading-relaxed ${art ? "text-[#3a2e1e]/70" : "text-amber-400/80"}`}>
+                    {track.videoUrl && isGoogleDriveUrl(track.videoUrl)
+                      ? "Google Drive links cannot be embedded. Use YouTube, Vimeo, Spotify, or SoundCloud for video embedding."
+                      : "This URL format is not supported for embedding. Supported platforms: YouTube, Vimeo, Spotify, SoundCloud."}
+                  </p>
                 </div>
               </div>
             )}

@@ -14,6 +14,16 @@ export interface MediaValidation {
   embedUrl?: string;
 }
 
+/** True if the URL is a Google Drive or Google Docs link */
+export function isGoogleDriveUrl(url: string): boolean {
+  return url.includes("drive.google.com") || url.includes("docs.google.com");
+}
+
+/** True if the URL has a recognised direct audio file extension */
+export function isDirectAudioUrl(url: string): boolean {
+  return /\.(mp3|wav|ogg|flac|aac|m4a|opus)(\?|#|$)/i.test(url);
+}
+
 /**
  * Validate a URL for a specific media type and return a structured result
  * including the embed URL where applicable.
@@ -46,9 +56,33 @@ export function validateMediaUrl(url: string, type: MediaType): MediaValidation 
 
   switch (type) {
     case "audio": {
+      if (isGoogleDriveUrl(trimmed)) {
+        return {
+          isValid: true,
+          message:
+            "Google Drive links may be blocked by browser streaming/CORS. Use Cloudflare R2 or direct MP3 hosting for production.",
+          severity: "warning",
+        };
+      }
+      // Page-based streaming services that can't serve raw audio
+      if (
+        trimmed.includes("suno.com") ||
+        (trimmed.includes("soundcloud.com") && !trimmed.includes("w.soundcloud.com")) ||
+        trimmed.includes("open.spotify.com") ||
+        trimmed.includes("music.apple.com")
+      ) {
+        return {
+          isValid: false,
+          message:
+            "Page links from Suno, SoundCloud, Spotify etc. cannot be used as direct audio. You need a direct .mp3, .wav, or CDN audio URL.",
+          severity: "warning",
+        };
+      }
       return {
         isValid: true,
-        message: "URL format looks valid — use the player below to confirm audio loads.",
+        message: isDirectAudioUrl(trimmed)
+          ? "Direct audio file URL detected — use the player below to confirm it loads."
+          : "URL format looks valid — use the player below to confirm audio loads.",
         severity: "ok",
       };
     }
@@ -150,8 +184,23 @@ export function validateMediaUrl(url: string, type: MediaType): MediaValidation 
 }
 
 /**
+ * Detect whether a video URL maps to a known embeddable platform.
+ * Returns the platform name or null if unrecognised.
+ */
+export function detectEmbedPlatform(
+  videoUrl: string
+): "youtube" | "vimeo" | "spotify" | "soundcloud" | null {
+  if (!videoUrl) return null;
+  if (/(?:youtube\.com\/watch\?v=|youtu\.be\/)/.test(videoUrl)) return "youtube";
+  if (/vimeo\.com\/\d+/.test(videoUrl)) return "vimeo";
+  if (/open\.spotify\.com\/(track|album|playlist|episode)\//.test(videoUrl)) return "spotify";
+  if (videoUrl.includes("soundcloud.com")) return "soundcloud";
+  return null;
+}
+
+/**
  * Convert a raw video URL to an embed URL for display in an <iframe>.
- * Returns null if the URL is not a recognised embeddable format.
+ * Returns null if the URL is not a recognised embeddable platform.
  */
 export function getVideoEmbedUrl(videoUrl: string): string | null {
   if (!videoUrl) return null;
@@ -175,8 +224,7 @@ export function getVideoEmbedUrl(videoUrl: string): string | null {
       return `https://w.soundcloud.com/player/?url=${encoded}&color=%23c8a84b&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false`;
     }
 
-    // Generic embed — return as-is
-    if (videoUrl.startsWith("http")) return videoUrl;
+    // Unrecognised — do not attempt to embed; caller should show a warning
     return null;
   } catch {
     return null;
