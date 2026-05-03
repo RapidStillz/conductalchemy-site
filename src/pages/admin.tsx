@@ -29,6 +29,10 @@ import {
   getSocialMetrics, saveSocialMetrics, getTotalFollowers,
   type SocialMetrics, type SocialPlatform,
 } from "@/lib/social";
+import {
+  getNewsletterSignups, removeNewsletterSignup, exportNewsletterCsv,
+  type NewsletterSignup,
+} from "@/lib/crm";
 
 // ---------------------------------------------------------------------------
 // Error Boundary
@@ -338,6 +342,9 @@ export default function Admin() {
   const [enquirySearch, setEnquirySearch] = useState("");
   const [expandedEnquiry, setExpandedEnquiry] = useState<string | null>(null);
 
+  // Newsletter signups
+  const [newsletterSignups, setNewsletterSignups] = useState<NewsletterSignup[]>([]);
+
   // Social tab
   const [socialMetrics, setSocialMetrics] = useState<SocialMetrics | null>(null);
   const [isEditingSocial, setIsEditingSocial] = useState(false);
@@ -393,6 +400,7 @@ export default function Admin() {
   useEffect(() => {
     if (activeTab === "access-log" || activeTab === "dashboard") {
       loadSubmissions();
+      setNewsletterSignups(getNewsletterSignups());
     }
     if (activeTab === "traffic") {
       setAnalytics(getAnalyticsSummary());
@@ -400,6 +408,7 @@ export default function Admin() {
     if (activeTab === "enquiries") {
       setEnquiries(getEnquiries());
       setUnreadCount(getUnreadCount());
+      setNewsletterSignups(getNewsletterSignups());
     }
     if (activeTab === "social") {
       const m = getSocialMetrics();
@@ -884,6 +893,12 @@ export default function Admin() {
               <StatCard label="Public" value={dashMetrics.pub} sub="Open access" />
               <StatCard label="Private / NDA" value={dashMetrics.priv + dashMetrics.nda} sub={`${dashMetrics.priv} Private · ${dashMetrics.nda} NDA`} />
               <StatCard label="Total Unlocks" value={dashMetrics.totalUnlocks} sub={loadingSubmissions ? "Loading…" : submissionsSource === "api" ? "Live from Worker" : "Local fallback"} />
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              <StatCard label="Enquiries" value={enquiries.length} sub="Contact form submissions" />
+              <StatCard label="Unread" value={unreadCount} sub="Unread enquiries" />
+              <StatCard label="Newsletter" value={newsletterSignups.length} sub="Confirmed signups" />
+              <StatCard label="Licence Requests" value={enquiries.filter(e => e.subject === "Licensing / Sync").length} sub="Sync / licence" />
             </div>
           </div>
 
@@ -2063,6 +2078,17 @@ export default function Admin() {
                             <span className="uppercase tracking-widest mr-2">Track ref:</span>{e.trackReference}
                           </div>
                         )}
+                        {e.intendedUse && (
+                          <div className="text-[10px] font-sans text-muted-foreground">
+                            <span className="uppercase tracking-widest mr-2">Intended use:</span>{e.intendedUse}
+                          </div>
+                        )}
+                        <div className="text-[10px] font-sans text-muted-foreground">
+                          <span className="uppercase tracking-widest mr-2">GDPR consent:</span>
+                          <span className={e.gdprConsent ? "text-green-400" : "text-red-400/70"}>
+                            {e.gdprConsent ? "Given" : "Not given"}
+                          </span>
+                        </div>
                         <div className="flex gap-3 pt-2 border-t border-border/20">
                           <a
                             href={`mailto:${e.email}?subject=Re: ${encodeURIComponent(e.subject)}`}
@@ -2083,6 +2109,73 @@ export default function Admin() {
                 ))}
             </div>
           )}
+
+          {/* ---------------------------------------------------------------- */}
+          {/* NEWSLETTER SIGNUPS                                                */}
+          {/* ---------------------------------------------------------------- */}
+          <div className="pt-6 border-t border-border/40 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-serif">Newsletter Signups</h3>
+                <p className="text-[10px] font-sans text-muted-foreground mt-1 tracking-wide">
+                  Visitors who opted in via the homepage or footer form.
+                </p>
+              </div>
+              {newsletterSignups.length > 0 && (
+                <button
+                  onClick={() => exportNewsletterCsv(newsletterSignups)}
+                  className="text-[10px] uppercase tracking-widest border border-border/50 px-4 py-2 hover:border-primary/50 hover:text-primary transition-colors"
+                >
+                  Export CSV
+                </button>
+              )}
+            </div>
+
+            {newsletterSignups.length === 0 ? (
+              <div className="border border-border/40 bg-card/10 py-12 text-center">
+                <p className="text-muted-foreground font-serif italic">No newsletter signups yet.</p>
+                <p className="text-[10px] font-sans text-muted-foreground/50 mt-2 tracking-wide">
+                  Visitors who sign up via the homepage or footer will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-border/40">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-[10px] text-muted-foreground uppercase bg-card/30 border-b border-border/40">
+                    <tr>
+                      <th className="px-4 py-3 font-normal tracking-widest">Email</th>
+                      <th className="px-4 py-3 font-normal tracking-widest">Source</th>
+                      <th className="px-4 py-3 font-normal tracking-widest">Consent</th>
+                      <th className="px-4 py-3 font-normal tracking-widest">Date</th>
+                      <th className="px-4 py-3 font-normal tracking-widest text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {newsletterSignups.map((s) => (
+                      <tr key={s.id} className="border-t border-border/20 hover:bg-card/20">
+                        <td className="px-4 py-3 font-sans">{s.email}</td>
+                        <td className="px-4 py-3 text-[10px] uppercase tracking-widest text-muted-foreground">{s.source}</td>
+                        <td className="px-4 py-3">
+                          <span className={`text-[9px] uppercase tracking-widest ${s.consentGiven ? "text-green-400" : "text-red-400/70"}`}>
+                            {s.consentGiven ? "✓ Given" : "✗ No"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-[10px] text-muted-foreground whitespace-nowrap">{safeFormatDate(s.timestamp)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => ask("Remove Signup", `Remove ${s.email} from the newsletter list?`, () => { removeNewsletterSignup(s.id); setNewsletterSignups(getNewsletterSignups()); }, { variant: "danger", confirmLabel: "Remove" })}
+                            className="text-[9px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -25,6 +25,8 @@ export default function Contact() {
   const [subject, setSubject] = useState<EnquirySubject | "">("");
   const [message, setMessage] = useState("");
   const [trackRef, setTrackRef] = useState("");
+  const [intendedUse, setIntendedUse] = useState("");
+  const [consent, setConsent] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [receipt, setReceipt] = useState<Enquiry | null>(null);
@@ -45,6 +47,7 @@ export default function Contact() {
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "A valid email is required.";
     if (!subject) e.subject = "Please select a subject.";
     if (!message.trim() || message.trim().length < 10) e.message = "Please write at least 10 characters.";
+    if (!consent) e.consent = "Please confirm your consent to continue.";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -53,13 +56,15 @@ export default function Contact() {
     e.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 300)); // brief UX pause
+    await new Promise((r) => setTimeout(r, 300));
     const result = submitEnquiry({
       name: name.trim(),
       email: email.trim(),
       subject: subject as EnquirySubject,
       message: message.trim(),
       trackReference: trackRef.trim() || undefined,
+      intendedUse: intendedUse.trim() || undefined,
+      gdprConsent: consent,
     });
     setSubmitting(false);
     setReceipt(result);
@@ -68,7 +73,7 @@ export default function Contact() {
   function handleReset() {
     setReceipt(null);
     setName(""); setEmail(""); setSubject(""); setMessage(""); setTrackRef("");
-    setErrors({});
+    setIntendedUse(""); setConsent(false); setErrors({});
   }
 
   if (!content) return null;
@@ -206,6 +211,14 @@ export default function Contact() {
               </div>
 
               <div>
+                <label className={labelCls}>Intended Use <span className="normal-case tracking-normal text-muted-foreground/50">(optional)</span></label>
+                <input
+                  type="text" value={intendedUse} onChange={e => setIntendedUse(e.target.value)}
+                  placeholder="e.g. Film, TV Drama, Advertising, Game…" className={inputCls}
+                />
+              </div>
+
+              <div>
                 <label className={labelCls}>Message</label>
                 <textarea
                   value={message}
@@ -219,6 +232,20 @@ export default function Contact() {
                 </div>
                 {errors.message && <p className={errCls}>{errors.message}</p>}
               </div>
+
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={e => setConsent(e.target.checked)}
+                  className="mt-0.5 w-3.5 h-3.5 accent-primary shrink-0"
+                />
+                <span className="text-[10px] font-sans text-muted-foreground leading-relaxed">
+                  I agree that Conduct Alchemy may contact me regarding this enquiry and send relevant updates.
+                  See our <a href="/legal#privacy" className="text-primary underline underline-offset-2">Privacy Policy</a>.
+                </span>
+              </label>
+              {errors.consent && <p className={errCls}>{errors.consent}</p>}
 
               <button
                 type="submit"

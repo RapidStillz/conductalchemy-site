@@ -6,6 +6,15 @@ import {
 } from "@/lib/cms";
 import { useSEO } from "@/hooks/use-seo";
 import { Link } from "wouter";
+import { NewsletterForm } from "@/components/newsletter-form";
+
+function NewsletterSection() {
+  return (
+    <div className="max-w-sm mx-auto text-left">
+      <NewsletterForm source="homepage" />
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Preview mode — reads draft content when ?preview=1 is in the URL
@@ -531,6 +540,22 @@ export default function Home() {
               <div className="text-xs tracking-widest text-muted-foreground uppercase mb-2">Cinematic Concept</div>
               <div className="font-serif text-xl">Monsoon Courtyard</div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* NEWSLETTER                                                           */}
+      {/* ------------------------------------------------------------------ */}
+      <section className="border-t border-border/40 py-20 bg-card/10">
+        <div className="container mx-auto px-4 md:px-8">
+          <div className="max-w-xl mx-auto text-center space-y-6">
+            <div className="text-[10px] font-sans tracking-[0.35em] uppercase text-primary">Stay Connected</div>
+            <h2 className="text-2xl md:text-3xl font-serif">New releases, scoring news &amp; licensing updates</h2>
+            <p className="text-sm text-muted-foreground font-serif italic">
+              Join the Conduct Alchemy circle — no spam, just music and opportunities.
+            </p>
+            <NewsletterSection />
           </div>
         </div>
       </section>

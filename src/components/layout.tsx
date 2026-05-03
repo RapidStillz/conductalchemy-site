@@ -1,6 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
+import { CookieBanner } from "@/components/cookie-banner";
+import { NewsletterForm } from "@/components/newsletter-form";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -30,7 +32,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </nav>
 
           {/* Mobile Menu Toggle */}
-          <button 
+          <button
             className="md:hidden p-2 text-foreground"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
@@ -57,15 +59,48 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <footer className="border-t border-border/40 py-12 mt-auto">
-        <div className="container mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="font-serif text-lg tracking-[0.2em] text-muted-foreground">CONDUCT ALCHEMY</div>
-          <div className="flex gap-6 text-xs tracking-widest text-muted-foreground font-sans">
-            <Link href="/legal" className="hover:text-primary transition-colors">LEGAL</Link>
-            <Link href="/contact" className="hover:text-primary transition-colors">CONTACT</Link>
+      <footer className="border-t border-border/40 pt-16 pb-10 mt-auto">
+        <div className="container mx-auto px-4 md:px-8">
+
+          {/* Footer top: brand + newsletter */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
+            <div className="space-y-4">
+              <div className="font-serif text-xl tracking-[0.2em]">CONDUCT ALCHEMY</div>
+              <p className="text-xs text-muted-foreground font-sans leading-relaxed max-w-xs">
+                Premium cinematic music for film, television, advertising, and brands.
+                Los Angeles · London.
+              </p>
+              <div className="flex gap-5 text-xs tracking-widest text-muted-foreground font-sans pt-2">
+                <Link href="/music" className="hover:text-primary transition-colors uppercase">Music</Link>
+                <Link href="/licensing" className="hover:text-primary transition-colors uppercase">Licensing</Link>
+                <Link href="/contact" className="hover:text-primary transition-colors uppercase">Contact</Link>
+              </div>
+            </div>
+
+            <div>
+              <div className="text-[10px] font-sans tracking-[0.25em] uppercase text-muted-foreground mb-4">
+                Stay in Tune
+              </div>
+              <NewsletterForm source="footer" compact />
+            </div>
+          </div>
+
+          {/* Footer bottom: legal links + copyright */}
+          <div className="border-t border-border/30 pt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <p className="text-[10px] text-muted-foreground/50 font-sans">
+              © {new Date().getFullYear()} Conduct Alchemy. All rights reserved.
+            </p>
+            <div className="flex flex-wrap gap-5 text-[10px] tracking-widest text-muted-foreground/60 font-sans uppercase">
+              <Link href="/legal#privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+              <Link href="/legal#terms" className="hover:text-primary transition-colors">Terms of Use</Link>
+              <Link href="/legal#cookies" className="hover:text-primary transition-colors">Cookie Policy</Link>
+              <Link href="/legal" className="hover:text-primary transition-colors">Legal</Link>
+            </div>
           </div>
         </div>
       </footer>
+
+      <CookieBanner />
     </div>
   );
 }

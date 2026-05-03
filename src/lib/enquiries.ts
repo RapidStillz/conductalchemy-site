@@ -24,6 +24,8 @@ export interface Enquiry {
   subject: EnquirySubject;
   message: string;
   trackReference?: string;
+  intendedUse?: string;
+  gdprConsent: boolean;
   timestamp: string;
   read: boolean;
 }
@@ -34,6 +36,8 @@ export interface SubmitEnquiryInput {
   subject: EnquirySubject;
   message: string;
   trackReference?: string;
+  intendedUse?: string;
+  gdprConsent?: boolean;
 }
 
 const KEY = "ca_enquiries";
@@ -67,6 +71,7 @@ export function submitEnquiry(input: SubmitEnquiryInput): Enquiry {
   const enquiry: Enquiry = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     ...input,
+    gdprConsent: input.gdprConsent ?? false,
     timestamp: new Date().toISOString(),
     read: false,
   };

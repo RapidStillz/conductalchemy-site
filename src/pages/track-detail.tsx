@@ -6,6 +6,7 @@ import { useSEO } from "@/hooks/use-seo";
 import { useRoute, Link } from "wouter";
 import { TrackPlayer } from "@/components/track-player";
 import { UnlockModal } from "@/components/unlock-modal";
+import { LicenceRequestModal } from "@/components/licence-request-modal";
 
 // ---------------------------------------------------------------------------
 // Preview mode
@@ -85,6 +86,7 @@ export default function TrackDetail() {
   const [isArtefactMode, setIsArtefactMode] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [showLicenceModal, setShowLicenceModal] = useState(false);
 
   // SEO — set once we have track data; defaults used while loading
   useSEO(
@@ -151,6 +153,13 @@ export default function TrackDetail() {
           isArtefactMode={isArtefactMode}
           onUnlocked={() => { setUnlocked(true); setShowUnlockModal(false); }}
           onClose={() => setShowUnlockModal(false)}
+        />
+      )}
+      {showLicenceModal && (
+        <LicenceRequestModal
+          trackTitle={track.title}
+          trackSlug={track.slug || track.id}
+          onClose={() => setShowLicenceModal(false)}
         />
       )}
 
@@ -228,6 +237,27 @@ export default function TrackDetail() {
                   <div><span className="opacity-50 mr-2">With</span>{track.collaborators.join(", ")}</div>
                 )}
               </div>
+            </div>
+
+            {/* Request Licence CTA */}
+            <div className="mb-10 flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => setShowLicenceModal(true)}
+                className={`inline-flex items-center gap-2 text-xs font-sans tracking-widest uppercase border px-5 py-3 transition-all ${
+                  art
+                    ? "border-[#b5a882] text-[#5c4a28] hover:bg-[#b5a882] hover:text-white"
+                    : "border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
+                }`}
+              >
+                <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 shrink-0">
+                  <path d="M2 14l1.5-4.5L10 3l3 3-6.5 6.5L2 14z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                  <path d="M8 5l3 3" stroke="currentColor" strokeWidth="1.2"/>
+                </svg>
+                Request a Licence
+              </button>
+              <span className={`text-[10px] font-sans ${art ? "text-[#1a1510]/40" : "text-muted-foreground/50"}`}>
+                Film · TV · Advertising · Games · Digital
+              </span>
             </div>
 
             {/* Player */}
