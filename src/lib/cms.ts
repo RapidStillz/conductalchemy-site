@@ -1,5 +1,13 @@
 export type AccessStatus = "Public" | "Private" | "NDA / Token Access Required";
 
+export interface SocialLinks {
+  youtube?: string;
+  instagram?: string;
+  spotify?: string;
+  soundcloud?: string;
+  tiktok?: string;
+}
+
 export interface Track {
   id: string;
   title: string;
@@ -15,10 +23,32 @@ export interface Track {
   visualConceptNotes: string;
   useCases: string[];
   featured: boolean;
+  heroTrack?: boolean;
+  featuredOrder?: number;
   accessStatus: AccessStatus;
   audioUrl?: string;
+  previewAudioUrl?: string;
+  videoUrl?: string;
   coverArtUrl?: string;
+  collaborators?: string[];
+  socialLinks?: SocialLinks;
   createdAt: string;
+}
+
+export interface HeroStat {
+  value: string;
+  label: string;
+}
+
+export interface LogoItem {
+  name: string;
+  logoUrl?: string;
+}
+
+export interface Testimonial {
+  quote: string;
+  author: string;
+  role?: string;
 }
 
 export interface SiteContent {
@@ -29,7 +59,54 @@ export interface SiteContent {
   aboutText: string;
   contactEmail: string;
   licensingIntro: string;
+  heroStats: HeroStat[];
+  collaboratorLogos: LogoItem[];
+  clientLogos: LogoItem[];
+  testimonials: Testimonial[];
+  proCtaTitle: string;
+  proCtaText: string;
 }
+
+// ---------------------------------------------------------------------------
+// Presets (used in CMS editor dropdowns)
+// ---------------------------------------------------------------------------
+
+export const GENRE_OPTIONS = [
+  "Bollywood / Orchestral",
+  "Cinematic / Orchestral",
+  "Electronic / Ambient",
+  "Jazz / Contemporary",
+  "World / Fusion",
+  "Hip-Hop / Urban",
+  "Rock / Alternative",
+  "Classical / Orchestral",
+  "Folk / Acoustic",
+  "Pop / Contemporary",
+  "Dance / Electronic",
+  "Soundtrack",
+];
+
+export const MOOD_PRESETS = [
+  "Emotional", "Hopeful", "Cinematic", "Epic", "Adventurous",
+  "Triumphant", "Dark", "Tense", "Mysterious", "Peaceful",
+  "Joyful", "Romantic", "Melancholic", "Energetic", "Dramatic",
+  "Inspiring", "Playful", "Atmospheric", "Ethereal", "Raw",
+];
+
+export const USE_CASE_PRESETS = [
+  "Film", "TV", "TV Drama", "Advertising", "Game", "Game Trailers",
+  "Sports", "Bollywood", "Digital", "YouTube", "Personal", "Other",
+];
+
+export const ACCESS_STATUS_OPTIONS: AccessStatus[] = [
+  "Public",
+  "Private",
+  "NDA / Token Access Required",
+];
+
+// ---------------------------------------------------------------------------
+// Defaults
+// ---------------------------------------------------------------------------
 
 const DEFAULT_TRACKS: Track[] = [
   {
@@ -51,6 +128,8 @@ const DEFAULT_TRACKS: Track[] = [
       "Two silhouettes in a monsoon courtyard. Warm amber light through rain. Slow-motion droplets. Hands almost touching.",
     useCases: ["Film", "TV Drama", "Bollywood", "Advertising"],
     featured: true,
+    heroTrack: true,
+    featuredOrder: 1,
     accessStatus: "Public",
     createdAt: new Date().toISOString(),
   },
@@ -78,6 +157,7 @@ const DEFAULT_TRACKS: Track[] = [
       "Vast landscape at golden hour. A lone figure on a ridge. Camera pulls back revealing the scale of the world. Epic reveal.",
     useCases: ["Film", "TV", "Game Trailers", "Advertising", "Sports"],
     featured: true,
+    featuredOrder: 2,
     accessStatus: "Private",
     createdAt: new Date().toISOString(),
   },
@@ -93,7 +173,23 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
   contactEmail: "licensing@conductalchemy.com",
   licensingIntro:
     "Our catalogue is available for sync licensing across film, television, advertising, and digital media. We work directly with music supervisors, directors, and creative teams to find the perfect sonic match.",
+  heroStats: [
+    { value: "Film, TV & Ads", label: "Sync Ready" },
+    { value: "Cross-Cultural", label: "Composition" },
+    { value: "Full Stems", label: "Available" },
+    { value: "Direct", label: "Licensing" },
+  ],
+  collaboratorLogos: [],
+  clientLogos: [],
+  testimonials: [],
+  proCtaTitle: "Music for the Screen",
+  proCtaText:
+    "We work directly with music supervisors, directors, and creative teams. Stems, masters, and custom commissions available on request.",
 };
+
+// ---------------------------------------------------------------------------
+// Storage helpers
+// ---------------------------------------------------------------------------
 
 function seedIfEmpty() {
   if (!localStorage.getItem("ca_tracks")) {
@@ -104,19 +200,45 @@ function seedIfEmpty() {
   }
 }
 
-/** Migrate older records that lack the accessStatus field */
 function migrateTracks(tracks: Track[]): Track[] {
   return tracks.map((t) => ({
     ...t,
     accessStatus: (t.accessStatus ?? "Public") as AccessStatus,
+    mood: Array.isArray(t.mood) ? t.mood : [],
+    versions: Array.isArray(t.versions) ? t.versions : [],
+    useCases: Array.isArray(t.useCases) ? t.useCases : [],
+    collaborators: Array.isArray(t.collaborators) ? t.collaborators : [],
+    socialLinks: t.socialLinks ?? {},
+    featured: t.featured ?? false,
   }));
 }
 
+function migrateSiteContent(raw: Partial<SiteContent>): SiteContent {
+  return {
+    ...DEFAULT_SITE_CONTENT,
+    ...raw,
+    heroStats: Array.isArray(raw.heroStats) ? raw.heroStats : DEFAULT_SITE_CONTENT.heroStats,
+    collaboratorLogos: Array.isArray(raw.collaboratorLogos) ? raw.collaboratorLogos : [],
+    clientLogos: Array.isArray(raw.clientLogos) ? raw.clientLogos : [],
+    testimonials: Array.isArray(raw.testimonials) ? raw.testimonials : [],
+    proCtaTitle: raw.proCtaTitle ?? DEFAULT_SITE_CONTENT.proCtaTitle,
+    proCtaText: raw.proCtaText ?? DEFAULT_SITE_CONTENT.proCtaText,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
 export function getTracks(): Track[] {
   seedIfEmpty();
-  const raw = localStorage.getItem("ca_tracks");
-  const tracks: Track[] = raw ? JSON.parse(raw) : [];
-  return migrateTracks(tracks);
+  try {
+    const raw = localStorage.getItem("ca_tracks");
+    const tracks: Track[] = raw ? JSON.parse(raw) : [];
+    return migrateTracks(tracks);
+  } catch {
+    return migrateTracks(DEFAULT_TRACKS);
+  }
 }
 
 export function getTrack(id: string): Track | undefined {
@@ -129,16 +251,14 @@ export function saveTracks(tracks: Track[]): void {
 
 export function getSiteContent(): SiteContent {
   seedIfEmpty();
-  const content = localStorage.getItem("ca_site_content");
-  return content ? JSON.parse(content) : DEFAULT_SITE_CONTENT;
+  try {
+    const raw = localStorage.getItem("ca_site_content");
+    return raw ? migrateSiteContent(JSON.parse(raw)) : DEFAULT_SITE_CONTENT;
+  } catch {
+    return DEFAULT_SITE_CONTENT;
+  }
 }
 
 export function saveSiteContent(content: SiteContent): void {
   localStorage.setItem("ca_site_content", JSON.stringify(content));
 }
-
-export const ACCESS_STATUS_OPTIONS: AccessStatus[] = [
-  "Public",
-  "Private",
-  "NDA / Token Access Required",
-];
