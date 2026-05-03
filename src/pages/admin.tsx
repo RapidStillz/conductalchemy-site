@@ -107,6 +107,7 @@ export default function Admin() {
   const [submissions, setSubmissions] = useState<UnlockRecord[]>([]);
   const [submissionsSource, setSubmissionsSource] = useState<"api" | "local" | null>(null);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+  const [submissionsError, setSubmissionsError] = useState<string | null>(null);
 
   useEffect(() => {
     setTracks(getTracks());
@@ -117,10 +118,23 @@ export default function Admin() {
 
   const loadSubmissions = useCallback(async () => {
     setLoadingSubmissions(true);
-    const result = await fetchSubmissions();
-    setSubmissions(result.records);
-    setSubmissionsSource(result.source);
-    setLoadingSubmissions(false);
+    setSubmissionsError(null);
+    try {
+      const result = await fetchSubmissions();
+      // Always guard — ensure we never set a non-array into submissions
+      const safe = Array.isArray(result.records) ? result.records : [];
+      setSubmissions(safe);
+      setSubmissionsSource(result.source);
+    } catch (e) {
+      console.error("[Admin] loadSubmissions threw:", e);
+      setSubmissionsError(
+        "Could not load submissions. Falling back to locally stored records."
+      );
+      setSubmissions(getLocalSubmissions());
+      setSubmissionsSource("local");
+    } finally {
+      setLoadingSubmissions(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -551,16 +565,18 @@ export default function Admin() {
               <h2 className="text-2xl font-serif">Access Log</h2>
               <p className="text-xs text-muted-foreground mt-1 font-sans tracking-wide">
                 Private track unlock submissions.{" "}
-                {IS_MOCK_MODE ? (
+                {loadingSubmissions ? (
+                  <span className="text-muted-foreground/60">Checking…</span>
+                ) : IS_MOCK_MODE ? (
                   <span className="text-amber-400/70">
                     Mock mode — data stored locally. Set{" "}
                     <code className="font-mono text-[10px]">VITE_WORKER_URL</code> to connect the Worker.
                   </span>
                 ) : submissionsSource === "api" ? (
                   <span className="text-green-400/70">Live — data from Cloudflare Worker.</span>
-                ) : (
+                ) : submissionsSource === "local" ? (
                   <span className="text-amber-400/70">Worker unreachable — showing local fallback data.</span>
-                )}
+                ) : null}
               </p>
             </div>
             <div className="flex gap-3">
@@ -582,111 +598,130 @@ export default function Admin() {
             </div>
           </div>
 
-          {/* Summary chips */}
-          {submissions.length > 0 && (
-            <div className="flex flex-wrap gap-4 mb-6 text-[10px] font-sans tracking-widest uppercase">
-              <span className="text-muted-foreground">
-                Total:{" "}
-                <span className="text-foreground">{submissions.length}</span>
-              </span>
-              {["Film", "TV", "Advertising", "Game", "Personal", "Other"].map((use) => {
-                const count = submissions.filter((r) => r.intendedUse === use).length;
-                if (!count) return null;
-                return (
-                  <span key={use} className="text-muted-foreground">
-                    {use}: <span className="text-foreground">{count}</span>
-                  </span>
-                );
-              })}
+          {/* Error banner */}
+          {submissionsError && (
+            <div className="mb-6 border border-red-500/30 bg-red-500/5 px-5 py-4 flex items-start gap-3">
+              <span className="text-red-400 text-xs mt-0.5">⚠</span>
+              <p className="text-xs font-sans text-red-400/90 leading-relaxed">
+                {submissionsError}
+              </p>
             </div>
           )}
 
-          {/* Table */}
-          <div className="overflow-x-auto border border-border/40">
-            <table className="w-full text-sm text-left">
-              <thead className="text-[10px] text-muted-foreground uppercase bg-card/30 border-b border-border/40">
-                <tr>
-                  <th className="px-5 py-4 font-normal tracking-widest">Track</th>
-                  <th className="px-5 py-4 font-normal tracking-widest">Name</th>
-                  <th className="px-5 py-4 font-normal tracking-widest">Email</th>
-                  <th className="px-5 py-4 font-normal tracking-widest">Use</th>
-                  <th className="px-5 py-4 font-normal tracking-widest">Terms</th>
-                  <th className="px-5 py-4 font-normal tracking-widest">Date</th>
-                  <th className="px-5 py-4 font-normal tracking-widest">Source</th>
-                  <th className="px-5 py-4 font-normal tracking-widest text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {submissions.map((rec) => (
-                  <tr
-                    key={rec.id}
-                    className="border-b border-border/20 hover:bg-card/10 transition-colors"
-                  >
-                    <td className="px-5 py-4">
-                      <div className="font-serif text-sm leading-tight">{rec.trackTitle}</div>
-                      <div className="text-[9px] text-muted-foreground tracking-widest mt-0.5">ID {rec.trackId}</div>
-                    </td>
-                    <td className="px-5 py-4 font-sans text-sm">{rec.name}</td>
-                    <td className="px-5 py-4 font-sans text-xs text-muted-foreground">{rec.email}</td>
-                    <td className="px-5 py-4">
-                      <span className="text-[9px] uppercase tracking-widest border border-border/40 px-2 py-1 text-muted-foreground">
-                        {rec.intendedUse}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      {rec.termsAccepted
-                        ? <span className="text-green-400 text-[10px]">✓ Yes</span>
-                        : <span className="text-muted-foreground text-[10px]">—</span>}
-                    </td>
-                    <td className="px-5 py-4 text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDate(rec.timestamp)}
-                    </td>
-                    <td className="px-5 py-4">
-                      <span
-                        className={`text-[9px] uppercase tracking-widest border px-2 py-1 ${
-                          rec.source === "api"
-                            ? "text-green-400 border-green-400/30 bg-green-400/5"
-                            : "text-amber-400 border-amber-400/30 bg-amber-400/5"
-                        }`}
+          {/* Loading skeleton */}
+          {loadingSubmissions && submissions.length === 0 && (
+            <div className="border border-border/40 px-6 py-16 text-center">
+              <p className="text-xs font-sans tracking-widest uppercase text-muted-foreground animate-pulse">
+                Loading submissions…
+              </p>
+            </div>
+          )}
+
+          {/* Empty state (not loading, no error, no records) */}
+          {!loadingSubmissions && submissions.length === 0 && !submissionsError && (
+            <div className="border border-border/40 px-6 py-16 text-center">
+              <p className="text-muted-foreground italic font-serif text-sm">
+                No unlock submissions yet.
+              </p>
+              <p className="text-[10px] font-sans tracking-widest uppercase text-muted-foreground/50 mt-2">
+                Submissions appear here once a visitor unlocks a private track.
+              </p>
+            </div>
+          )}
+
+          {/* Table — only render when we have records */}
+          {submissions.length > 0 && (
+            <>
+              {/* Summary chips */}
+              <div className="flex flex-wrap gap-4 mb-6 text-[10px] font-sans tracking-widest uppercase">
+                <span className="text-muted-foreground">
+                  Total: <span className="text-foreground">{submissions.length}</span>
+                </span>
+                {["Film", "TV", "Advertising", "Game", "Personal", "Other"].map((use) => {
+                  const count = submissions.filter((r) => r.intendedUse === use).length;
+                  if (!count) return null;
+                  return (
+                    <span key={use} className="text-muted-foreground">
+                      {use}: <span className="text-foreground">{count}</span>
+                    </span>
+                  );
+                })}
+              </div>
+
+              <div className="overflow-x-auto border border-border/40">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-[10px] text-muted-foreground uppercase bg-card/30 border-b border-border/40">
+                    <tr>
+                      <th className="px-5 py-4 font-normal tracking-widest">Track</th>
+                      <th className="px-5 py-4 font-normal tracking-widest">Name</th>
+                      <th className="px-5 py-4 font-normal tracking-widest">Email</th>
+                      <th className="px-5 py-4 font-normal tracking-widest">Use</th>
+                      <th className="px-5 py-4 font-normal tracking-widest">Terms</th>
+                      <th className="px-5 py-4 font-normal tracking-widest">Date</th>
+                      <th className="px-5 py-4 font-normal tracking-widest">Source</th>
+                      <th className="px-5 py-4 font-normal tracking-widest text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {submissions.map((rec) => (
+                      <tr
+                        key={rec.id ?? `${rec.trackId}-${rec.timestamp}`}
+                        className="border-b border-border/20 hover:bg-card/10 transition-colors"
                       >
-                        {rec.source}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <button
-                        onClick={() => {
-                          if (confirm(`Revoke local access for "${rec.trackTitle}"?`)) {
-                            revokeLocalAccess(rec.trackId);
-                            loadSubmissions();
-                          }
-                        }}
-                        className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        Revoke
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {submissions.length === 0 && !loadingSubmissions && (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="px-6 py-12 text-center text-muted-foreground italic font-serif"
-                    >
-                      No unlock submissions yet.
-                    </td>
-                  </tr>
-                )}
-                {loadingSubmissions && submissions.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-muted-foreground text-xs tracking-widest uppercase">
-                      Loading submissions…
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                        <td className="px-5 py-4">
+                          <div className="font-serif text-sm leading-tight">
+                            {rec.trackTitle ?? "—"}
+                          </div>
+                          <div className="text-[9px] text-muted-foreground tracking-widest mt-0.5">
+                            ID {rec.trackId}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 font-sans text-sm">{rec.name}</td>
+                        <td className="px-5 py-4 font-sans text-xs text-muted-foreground">{rec.email}</td>
+                        <td className="px-5 py-4">
+                          <span className="text-[9px] uppercase tracking-widest border border-border/40 px-2 py-1 text-muted-foreground">
+                            {rec.intendedUse}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          {rec.termsAccepted
+                            ? <span className="text-green-400 text-[10px]">✓ Yes</span>
+                            : <span className="text-muted-foreground text-[10px]">—</span>}
+                        </td>
+                        <td className="px-5 py-4 text-xs text-muted-foreground whitespace-nowrap">
+                          {formatDate(rec.timestamp)}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span
+                            className={`text-[9px] uppercase tracking-widest border px-2 py-1 ${
+                              rec.source === "api"
+                                ? "text-green-400 border-green-400/30 bg-green-400/5"
+                                : "text-amber-400 border-amber-400/30 bg-amber-400/5"
+                            }`}
+                          >
+                            {rec.source ?? "local"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <button
+                            onClick={() => {
+                              if (confirm(`Revoke local access for "${rec.trackTitle}"?`)) {
+                                revokeLocalAccess(rec.trackId);
+                                loadSubmissions();
+                              }
+                            }}
+                            className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            Revoke
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -93,7 +93,7 @@ async function handlePost(request: Request, env: Env): Promise<Response> {
 async function handleGet(env: Env): Promise<Response> {
   const indexRaw = await env.UNLOCK_STORE.get(INDEX_KEY);
   if (!indexRaw) {
-    return json([]);
+    return json({ ok: true, records: [] });
   }
 
   const index: string[] = JSON.parse(indexRaw);
@@ -112,7 +112,7 @@ async function handleGet(env: Env): Promise<Response> {
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 
-  return json(records);
+  return json({ ok: true, records });
 }
 
 // ---------------------------------------------------------------------------
