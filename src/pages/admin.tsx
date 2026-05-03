@@ -75,11 +75,18 @@ const EMPTY_TRACK: Track = {
   mood: [], bpm: 0, musicalKey: "", description: "", lyrics: "",
   licensingNotes: "", versions: [], visualConceptNotes: "", useCases: [],
   featured: false, heroTrack: false, featuredOrder: undefined,
-  accessStatus: "Public", audioUrl: "", previewAudioUrl: "", videoUrl: "",
+  accessStatus: "Public", audioUrl: "", previewAudioUrl: "", previewDuration: 45, videoUrl: "",
   coverArtUrl: "", collaborators: [],
   socialLinks: { youtube: "", instagram: "", spotify: "", soundcloud: "", tiktok: "" },
   createdAt: new Date().toISOString(),
 };
+
+// ---------------------------------------------------------------------------
+// Admin password — TEMPORARY MVP auth. Replace with Cloudflare Access in prod.
+// See: https://developers.cloudflare.com/cloudflare-one/applications/configure-apps/
+// ---------------------------------------------------------------------------
+const ADMIN_PASSWORD = "conduct2024"; // TODO: Replace with Cloudflare Access for production
+const AUTH_KEY = "ca_admin_auth";
 
 const ACCESS_STATUS_COLORS: Record<AccessStatus, string> = {
   Public: "text-green-400 border-green-400/30 bg-green-400/5",
@@ -229,7 +236,64 @@ function ValidationBadge({ result }: { result: MediaValidation | null }) {
 // Main component
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Login screen
+// ---------------------------------------------------------------------------
+
+function AdminLogin({ onLogin }: { onLogin: () => void }) {
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState(false);
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (pw === ADMIN_PASSWORD) {
+      localStorage.setItem(AUTH_KEY, "1");
+      onLogin();
+    } else {
+      setErr(true);
+      setPw("");
+    }
+  }
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="w-full max-w-sm space-y-8">
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-serif">Atelier / CMS</h1>
+          <p className="text-[10px] font-sans tracking-[0.2em] uppercase text-muted-foreground">Admin Access Required</p>
+        </div>
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label className="block text-[10px] font-sans tracking-[0.15em] text-muted-foreground uppercase mb-1.5">Password</label>
+            <input
+              type="password"
+              value={pw}
+              onChange={e => { setPw(e.target.value); setErr(false); }}
+              autoFocus
+              className="w-full bg-background border border-border/60 px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors"
+              placeholder="Enter admin password"
+            />
+            {err && (
+              <p className="text-[10px] font-sans text-red-400 mt-1.5">Incorrect password. Try again.</p>
+            )}
+          </div>
+          <button type="submit" className="w-full border border-primary/60 text-primary px-5 py-3 text-xs uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-colors">
+            Sign In
+          </button>
+        </form>
+        <p className="text-[9px] font-sans text-muted-foreground/40 text-center leading-relaxed">
+          For production, replace this password gate with Cloudflare Access.<br />
+          This is a temporary MVP auth layer only.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Admin component
+// ---------------------------------------------------------------------------
+
 export default function Admin() {
+  const [authed, setAuthed] = useState(() => localStorage.getItem(AUTH_KEY) === "1");
   const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
   const [tracks, setTracks] = useState<Track[]>([]);
   const [siteContent, setContent] = useState<SiteContent | null>(null);
@@ -461,6 +525,7 @@ export default function Admin() {
       accessStatus: (str("accessStatus") as AccessStatus) || "Public",
       audioUrl: str("audioUrl") || undefined,
       previewAudioUrl: str("previewAudioUrl") || undefined,
+      previewDuration: str("previewDuration") ? Number(str("previewDuration")) : 45,
       videoUrl: str("videoUrl") || undefined,
       coverArtUrl: str("coverArtUrl") || undefined,
       collaborators: str("collaborators").split(",").map(s => s.trim()).filter(Boolean),
@@ -670,6 +735,8 @@ export default function Admin() {
     );
   };
 
+  if (!authed) return <AdminLogin onLogin={() => setAuthed(true)} />;
+
   if (!siteContent) return null;
 
   // ---------------------------------------------------------------------------
@@ -744,8 +811,14 @@ export default function Admin() {
           <p className="text-sm text-muted-foreground mt-2 font-sans">Dashboard, catalogue, access log, site content, and media testing.</p>
         </div>
         <div className="flex flex-col items-end gap-3">
-          <div className="flex items-center gap-4 flex-wrap justify-end">
+          <div className="flex items-center gap-3 flex-wrap justify-end">
             {importStatus && <span className="text-xs tracking-widest text-primary animate-pulse">{importStatus}</span>}
+            <button
+              onClick={() => { localStorage.removeItem(AUTH_KEY); setAuthed(false); }}
+              className="text-[10px] uppercase tracking-widest text-muted-foreground/60 border border-border/30 px-3 py-2 hover:border-red-400/40 hover:text-red-400/70 transition-colors"
+            >
+              Sign Out
+            </button>
             <div className="flex flex-col items-end gap-1">
               <button
                 onClick={handleExport}
@@ -1091,9 +1164,25 @@ export default function Admin() {
                     )}
                   </div>
                   <div>
-                    <label className={labelCls}>Preview Audio URL (45s clip)</label>
+                    <label className={labelCls}>Preview Duration (seconds)</label>
                     <p className="text-[9px] font-sans text-muted-foreground/50 mb-1.5 leading-relaxed">
-                      Optional short clip for private tracks. If omitted, the player will time-limit the full audio URL to 45 seconds.
+                      How many seconds a private/locked visitor can hear before the unlock prompt appears. Default: 45.
+                      For stronger protection, upload a separate watermarked preview file (see field below).
+                    </p>
+                    <input
+                      name="previewDuration"
+                      type="number"
+                      min="5"
+                      max="300"
+                      defaultValue={editingTrack.previewDuration ?? 45}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Preview Audio URL (optional separate clip)</label>
+                    <p className="text-[9px] font-sans text-muted-foreground/50 mb-1.5 leading-relaxed">
+                      Optional: upload a separate watermarked or shortened preview file. If provided, this clip plays instead of time-limiting the full audio.
+                      For MVP, the preview duration above limits the full file. For stronger protection, upload a watermarked file here later.
                     </p>
                     <div className="flex gap-2">
                       <input id="input-previewAudioUrl" name="previewAudioUrl" defaultValue={editingTrack.previewAudioUrl || ""} placeholder="https://example.com/preview.mp3" className={`${inputCls} flex-1`} />

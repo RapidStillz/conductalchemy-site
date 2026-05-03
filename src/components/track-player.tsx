@@ -1,10 +1,12 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 
-const PREVIEW_SECONDS = 45;
+const DEFAULT_PREVIEW_SECONDS = 45;
 
 interface TrackPlayerProps {
   audioUrl?: string;
   previewAudioUrl?: string;
+  /** Per-track preview duration in seconds. Defaults to 45. */
+  previewDuration?: number;
   isPrivate: boolean;
   isUnlocked: boolean;
   trackTitle: string;
@@ -35,12 +37,14 @@ function isGoogleDrive(url: string): boolean {
 export function TrackPlayer({
   audioUrl,
   previewAudioUrl,
+  previewDuration,
   isPrivate,
   isUnlocked,
   trackTitle,
   isArtefactMode = false,
   onRequestUnlock,
 }: TrackPlayerProps) {
+  const PREVIEW_SECONDS = previewDuration ?? DEFAULT_PREVIEW_SECONDS;
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);

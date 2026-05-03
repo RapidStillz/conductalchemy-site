@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getTrack, getPreviewTracks, Track, AccessStatus, type SocialLinks } from "@/lib/cms";
 import { isTrackUnlocked } from "@/lib/access";
-import { getVideoEmbedUrl, isGoogleDriveUrl } from "@/lib/media";
+import { getVideoEmbedUrl, isGoogleDriveUrl, detectEmbedPlatform } from "@/lib/media";
 import { useSEO } from "@/hooks/use-seo";
 import { useRoute, Link } from "wouter";
 import { TrackPlayer } from "@/components/track-player";
@@ -139,6 +139,8 @@ export default function TrackDetail() {
   const embedUrl = track.videoUrl ? getVideoEmbedUrl(track.videoUrl) : null;
   const hasUnsupportedVideoUrl = !!(track.videoUrl && !embedUrl);
   const hasSocialLinks = track.socialLinks && Object.values(track.socialLinks).some(Boolean);
+  const videoPlatform = track.videoUrl ? detectEmbedPlatform(track.videoUrl) : null;
+  const isYouTube = videoPlatform === "youtube";
 
   return (
     <>
@@ -233,6 +235,7 @@ export default function TrackDetail() {
               <TrackPlayer
                 audioUrl={track.audioUrl}
                 previewAudioUrl={track.previewAudioUrl}
+                previewDuration={track.previewDuration}
                 isPrivate={isPrivate}
                 isUnlocked={unlocked}
                 trackTitle={track.title}
@@ -241,35 +244,72 @@ export default function TrackDetail() {
               />
             </div>
 
-            {/* Video Embed */}
-            {(!isPrivate || unlocked) && embedUrl && (
+            {/* Video section — YouTube "Watch" button always visible; embed only when unlocked/public */}
+            {track.videoUrl && (
               <div className="mb-16">
                 <h2 className={`text-xs font-sans tracking-[0.2em] uppercase mb-6 ${art ? "text-[#1a1510]/50" : "text-muted-foreground"}`}>Video</h2>
-                <div className="relative w-full aspect-video border border-border/30 overflow-hidden">
-                  <iframe
-                    src={embedUrl}
-                    title={`${track.title} video`}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="absolute inset-0 w-full h-full"
-                    loading="lazy"
-                  />
-                </div>
-              </div>
-            )}
 
-            {/* Unsupported video URL */}
-            {(!isPrivate || unlocked) && hasUnsupportedVideoUrl && (
-              <div className="mb-16">
-                <h2 className={`text-xs font-sans tracking-[0.2em] uppercase mb-6 ${art ? "text-[#1a1510]/50" : "text-muted-foreground"}`}>Video</h2>
-                <div className={`border px-5 py-4 flex items-start gap-3 ${art ? "border-[#1a1510]/20 bg-[#ede5d0]" : "border-amber-400/20 bg-amber-400/5"}`}>
-                  <span className={`text-sm shrink-0 mt-0.5 ${art ? "text-[#5c4a28]" : "text-amber-400"}`}>⚠</span>
-                  <p className={`text-xs font-sans leading-relaxed ${art ? "text-[#3a2e1e]/70" : "text-amber-400/80"}`}>
-                    {track.videoUrl && isGoogleDriveUrl(track.videoUrl)
-                      ? "Google Drive links cannot be embedded. Use YouTube, Vimeo, Spotify, or SoundCloud for video embedding."
-                      : "This URL format is not supported for embedding. Supported platforms: YouTube, Vimeo, Spotify, SoundCloud."}
-                  </p>
-                </div>
+                {/* Responsive embed (only for unlocked / public tracks) */}
+                {(!isPrivate || unlocked) && embedUrl && (
+                  <div className="relative w-full aspect-video border border-border/30 overflow-hidden mb-4">
+                    <iframe
+                      src={embedUrl}
+                      title={`${track.title} video`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="absolute inset-0 w-full h-full"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+
+                {/* "Watch on YouTube" external link — always visible when YouTube URL present */}
+                {isYouTube && (
+                  <a
+                    href={track.videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-3 text-xs font-sans tracking-widest uppercase border px-5 py-3 transition-colors ${
+                      art
+                        ? "border-[#b5a882] text-[#5c4a28] hover:bg-[#b5a882] hover:text-white"
+                        : "border-border/60 text-muted-foreground hover:border-primary/60 hover:text-primary"
+                    }`}
+                  >
+                    <svg viewBox="0 0 20 14" fill="none" className="w-4 h-4 shrink-0">
+                      <rect width="20" height="14" rx="3" fill="currentColor" fillOpacity="0.15"/>
+                      <path d="M8 4.5l6 3-6 3V4.5z" fill="currentColor"/>
+                    </svg>
+                    Watch on YouTube
+                  </a>
+                )}
+
+                {/* External link for other embeddable platforms (not YouTube) */}
+                {videoPlatform && !isYouTube && (
+                  <a
+                    href={track.videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-2 text-xs font-sans tracking-widest uppercase border px-5 py-3 transition-colors ${
+                      art
+                        ? "border-[#b5a882] text-[#5c4a28] hover:bg-[#b5a882] hover:text-white"
+                        : "border-border/60 text-muted-foreground hover:border-primary/60 hover:text-primary"
+                    }`}
+                  >
+                    ↗ Open on {videoPlatform.charAt(0).toUpperCase() + videoPlatform.slice(1)}
+                  </a>
+                )}
+
+                {/* Unsupported URL warning */}
+                {hasUnsupportedVideoUrl && (
+                  <div className={`border px-5 py-4 flex items-start gap-3 ${art ? "border-[#1a1510]/20 bg-[#ede5d0]" : "border-amber-400/20 bg-amber-400/5"}`}>
+                    <span className={`text-sm shrink-0 mt-0.5 ${art ? "text-[#5c4a28]" : "text-amber-400"}`}>⚠</span>
+                    <p className={`text-xs font-sans leading-relaxed ${art ? "text-[#3a2e1e]/70" : "text-amber-400/80"}`}>
+                      {isGoogleDriveUrl(track.videoUrl)
+                        ? "Google Drive links cannot be embedded. Use YouTube, Vimeo, Spotify, or SoundCloud for video embedding."
+                        : "This URL format is not supported for embedding. Supported platforms: YouTube, Vimeo, Spotify, SoundCloud."}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

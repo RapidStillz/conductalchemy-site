@@ -34,6 +34,7 @@ export interface Track {
   accessStatus: AccessStatus;
   audioUrl?: string;
   previewAudioUrl?: string;
+  previewDuration?: number;   // seconds; default 45 when undefined
   videoUrl?: string;
   coverArtUrl?: string;
   collaborators?: string[];
@@ -251,6 +252,7 @@ function migrateTracks(tracks: Track[]): Track[] {
     collaborators: Array.isArray(t.collaborators) ? t.collaborators : [],
     socialLinks: t.socialLinks ?? {},
     featured: t.featured ?? false,
+    previewDuration: t.previewDuration ?? 45,
   }));
 }
 
