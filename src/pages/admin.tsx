@@ -229,6 +229,9 @@ export default function Admin() {
   const [editorMood, setEditorMood] = useState("");
   const [editorUseCases, setEditorUseCases] = useState("");
   const [editorSlug, setEditorSlug] = useState("");
+  const [editorGenre, setEditorGenre] = useState(GENRE_OPTIONS[0]);
+  const [isAddingGenre, setIsAddingGenre] = useState(false);
+  const [customGenre, setCustomGenre] = useState("");
 
   // Draft / Publish state
   const [hasDraft, setHasDraft] = useState(false);
@@ -245,6 +248,7 @@ export default function Admin() {
   const [submissionsError, setSubmissionsError] = useState<string | null>(null);
   const [logSearch, setLogSearch] = useState("");
   const [logUseFilter, setLogUseFilter] = useState<string>("");
+  const [logSort, setLogSort] = useState<"newest" | "oldest">("newest");
 
   // Media test state
   const [testAudioUrl, setTestAudioUrl] = useState("");
@@ -291,7 +295,7 @@ export default function Admin() {
   }, [activeTab, loadSubmissions]);
 
   const filteredSubmissions = useMemo(() => {
-    return submissions.filter((r) => {
+    const filtered = submissions.filter((r) => {
       if (logSearch) {
         const q = logSearch.toLowerCase();
         if (
@@ -303,7 +307,14 @@ export default function Admin() {
       if (logUseFilter && r.intendedUse !== logUseFilter) return false;
       return true;
     });
-  }, [submissions, logSearch, logUseFilter]);
+    return [...filtered].sort((a, b) => {
+      try {
+        const ta = new Date(a.timestamp).getTime();
+        const tb = new Date(b.timestamp).getTime();
+        return logSort === "newest" ? tb - ta : ta - tb;
+      } catch { return 0; }
+    });
+  }, [submissions, logSearch, logUseFilter, logSort]);
 
   const dashMetrics = useMemo(() => {
     const total = tracks.length;
@@ -333,6 +344,9 @@ export default function Admin() {
     setEditorMood((t.mood || []).join(", "));
     setEditorUseCases((t.useCases || []).join(", "));
     setEditorSlug(t.slug || "");
+    setEditorGenre(t.genre || GENRE_OPTIONS[0]);
+    setIsAddingGenre(false);
+    setCustomGenre("");
   };
 
   const openNewTrack = () => {
@@ -340,6 +354,9 @@ export default function Admin() {
     setEditorMood("");
     setEditorUseCases("");
     setEditorSlug("");
+    setEditorGenre(GENRE_OPTIONS[0]);
+    setIsAddingGenre(false);
+    setCustomGenre("");
   };
 
   const handleSaveTrack = (e: React.FormEvent<HTMLFormElement>) => {
@@ -349,12 +366,13 @@ export default function Admin() {
     const str = (name: string) => (fd.get(name) as string || "").trim();
     const title = str("title");
     const slug = editorSlug.trim() || generateSlug(title);
+    const finalGenre = isAddingGenre ? customGenre.trim() || editorGenre : editorGenre;
     const newTrack: Track = {
       id: editingTrack.id || Date.now().toString(),
       slug,
       title,
       artist: str("artist") || "Conduct Alchemy",
-      genre: str("genre"),
+      genre: finalGenre,
       bpm: Number(str("bpm")) || 0,
       musicalKey: str("musicalKey"),
       description: str("description"),
@@ -598,20 +616,32 @@ export default function Admin() {
           <h1 className="text-4xl font-serif">Atelier / CMS</h1>
           <p className="text-sm text-muted-foreground mt-2 font-sans">Dashboard, catalogue, access log, site content, and media testing.</p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          {importStatus && <span className="text-xs tracking-widest text-primary animate-pulse">{importStatus}</span>}
-          <button onClick={handleExport} className="text-xs tracking-widest uppercase border border-border px-4 py-2.5 hover:bg-border/30 transition-colors">
-            Export JSON
-          </button>
-          <label className="text-xs tracking-widest uppercase border border-border px-4 py-2.5 hover:bg-border/30 transition-colors cursor-pointer">
-            Import JSON
-            <input type="file" accept=".json" className="hidden" onChange={handleImport} />
-          </label>
-          {hasDraft && (
-            <button onClick={handlePublishAll} className="text-xs tracking-widest uppercase border border-amber-400/60 text-amber-400 bg-amber-400/5 px-5 py-2.5 hover:bg-amber-400 hover:text-black transition-colors">
-              Publish Now
+        <div className="flex flex-col items-end gap-3">
+          <div className="flex items-center gap-3 flex-wrap justify-end">
+            {importStatus && <span className="text-xs tracking-widest text-primary animate-pulse">{importStatus}</span>}
+            <button
+              onClick={handleExport}
+              title="Download all tracks and site content as a JSON backup file"
+              className="text-xs tracking-widest uppercase border border-border px-4 py-2.5 hover:bg-border/30 transition-colors"
+            >
+              Export Backup ↓
             </button>
-          )}
+            <label
+              title="Restore tracks and site content from a previously exported JSON backup"
+              className="text-xs tracking-widest uppercase border border-border px-4 py-2.5 hover:bg-border/30 transition-colors cursor-pointer"
+            >
+              Import Backup ↑
+              <input type="file" accept=".json" className="hidden" onChange={handleImport} />
+            </label>
+            {hasDraft && (
+              <button onClick={handlePublishAll} className="text-xs tracking-widest uppercase border border-amber-400/60 text-amber-400 bg-amber-400/5 px-5 py-2.5 hover:bg-amber-400 hover:text-black transition-colors">
+                Publish Now
+              </button>
+            )}
+          </div>
+          <p className="text-[9px] font-sans text-muted-foreground/40 tracking-wide text-right">
+            Export/Import saves all tracks &amp; site content as a single .json file.
+          </p>
         </div>
       </div>
 
@@ -764,9 +794,55 @@ export default function Admin() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label className={labelCls}>Genre</label>
-                    <select name="genre" defaultValue={editingTrack.genre} className={`${inputCls} bg-background`}>
-                      {GENRE_OPTIONS.map(g => <option key={g}>{g}</option>)}
+                    <select
+                      value={isAddingGenre ? "__add__" : editorGenre}
+                      onChange={e => {
+                        if (e.target.value === "__add__") {
+                          setIsAddingGenre(true);
+                          setCustomGenre("");
+                        } else {
+                          setIsAddingGenre(false);
+                          setEditorGenre(e.target.value);
+                        }
+                      }}
+                      className={`${inputCls} bg-background`}
+                    >
+                      {GENRE_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
+                      <option value="__add__">＋ Add new genre…</option>
                     </select>
+                    {isAddingGenre && (
+                      <div className="flex gap-2 mt-2">
+                        <input
+                          autoFocus
+                          value={customGenre}
+                          onChange={e => setCustomGenre(e.target.value)}
+                          placeholder="e.g. Neo-Soul / R&B"
+                          className={`${inputCls} flex-1 text-xs`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (customGenre.trim()) {
+                              setEditorGenre(customGenre.trim());
+                            }
+                            setIsAddingGenre(false);
+                          }}
+                          className="border border-primary/50 text-primary px-3 py-1.5 text-[10px] uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-colors whitespace-nowrap"
+                        >
+                          Use
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setIsAddingGenre(false); setCustomGenre(""); }}
+                          className="border border-border/50 text-muted-foreground px-3 py-1.5 text-[10px] uppercase tracking-widest hover:text-foreground transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                    {isAddingGenre && customGenre.trim() && (
+                      <div className="text-[9px] font-mono text-primary/70 mt-1">Will save as: {customGenre.trim()}</div>
+                    )}
                   </div>
                   <div>
                     <label className={labelCls}>BPM</label>
@@ -1246,27 +1322,52 @@ export default function Admin() {
             </div>
 
             {submissions.length > 0 && (
-              <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                <input
-                  type="search"
-                  placeholder="Search by name, email, or track…"
-                  value={logSearch}
-                  onChange={e => setLogSearch(e.target.value)}
-                  className="flex-1 bg-background border border-border/60 px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
-                />
-                <select
-                  value={logUseFilter}
-                  onChange={e => setLogUseFilter(e.target.value)}
-                  className="bg-background border border-border/60 px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors text-muted-foreground"
-                >
-                  <option value="">All Uses</option>
-                  {INTENDED_USES.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
-                {(logSearch || logUseFilter) && (
-                  <button onClick={() => { setLogSearch(""); setLogUseFilter(""); }} className="text-xs uppercase tracking-widest text-primary/70 hover:text-primary transition-colors whitespace-nowrap">
-                    Clear
+              <div className="space-y-3 mb-6">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    type="search"
+                    placeholder="Search by name, email, or track…"
+                    value={logSearch}
+                    onChange={e => setLogSearch(e.target.value)}
+                    className="flex-1 bg-background border border-border/60 px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
+                  />
+                  <select
+                    value={logUseFilter}
+                    onChange={e => setLogUseFilter(e.target.value)}
+                    className="bg-background border border-border/60 px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors text-muted-foreground"
+                  >
+                    <option value="">All Uses</option>
+                    {INTENDED_USES.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                  {(logSearch || logUseFilter) && (
+                    <button onClick={() => { setLogSearch(""); setLogUseFilter(""); }} className="text-xs uppercase tracking-widest text-primary/70 hover:text-primary transition-colors whitespace-nowrap">
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-sans uppercase tracking-widest text-muted-foreground">Sort:</span>
+                  <button
+                    onClick={() => setLogSort("newest")}
+                    className={`text-[10px] uppercase tracking-widest px-3 py-1.5 border transition-colors ${
+                      logSort === "newest"
+                        ? "border-primary/60 text-primary bg-primary/5"
+                        : "border-border/40 text-muted-foreground hover:border-border"
+                    }`}
+                  >
+                    Newest first
                   </button>
-                )}
+                  <button
+                    onClick={() => setLogSort("oldest")}
+                    className={`text-[10px] uppercase tracking-widest px-3 py-1.5 border transition-colors ${
+                      logSort === "oldest"
+                        ? "border-primary/60 text-primary bg-primary/5"
+                        : "border-border/40 text-muted-foreground hover:border-border"
+                    }`}
+                  >
+                    Oldest first
+                  </button>
+                </div>
               </div>
             )}
 

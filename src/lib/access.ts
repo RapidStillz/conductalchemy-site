@@ -11,6 +11,7 @@ export interface UnlockRecord {
   name: string;
   email: string;
   intendedUse: string;
+  notes?: string;
   termsAccepted: boolean;
   timestamp: string;
   userAgent?: string;
@@ -23,6 +24,7 @@ export interface SubmitUnlockInput {
   name: string;
   email: string;
   intendedUse: string;
+  notes?: string;
   termsAccepted: boolean;
 }
 
