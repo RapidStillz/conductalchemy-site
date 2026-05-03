@@ -27,6 +27,7 @@ export interface Track {
   versions: string[];
   visualConceptNotes: string;
   useCases: string[];
+  markets?: string[];       // explicit market slugs, e.g. ["western", "bollywood"]
   featured: boolean;
   heroTrack?: boolean;
   featuredOrder?: number;

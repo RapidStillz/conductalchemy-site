@@ -364,22 +364,90 @@ export default function Home() {
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* STATS                                                                */}
+      {/* STATS / HERO KPIs                                                    */}
       {/* ------------------------------------------------------------------ */}
       {hasStats && (
-        <section className="border-t border-border/40 py-16 bg-card/10">
-          <div className="container mx-auto px-4 md:px-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-3xl mx-auto text-center">
+        <section className="border-t border-border/40 py-20 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/6 via-transparent to-transparent pointer-events-none" />
+          <div className="container mx-auto px-4 md:px-8 relative">
+            <div className="text-center mb-12">
+              <div className="text-[9px] font-sans tracking-[0.4em] uppercase text-primary/60 mb-2">By the numbers</div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-0 max-w-4xl mx-auto divide-x divide-border/30">
               {content.heroStats.map((stat, i) => (
-                <div key={i} className="flex flex-col gap-1">
-                  <div className="text-2xl md:text-3xl font-serif text-primary">{stat.value}</div>
-                  <div className="text-[10px] font-sans tracking-[0.2em] uppercase text-muted-foreground">{stat.label}</div>
+                <div key={i} className="flex flex-col items-center justify-center gap-2 px-6 py-8 text-center group">
+                  <div className="text-4xl md:text-5xl lg:text-6xl font-serif text-primary group-hover:scale-105 transition-transform duration-500 leading-none">
+                    {stat.value}
+                  </div>
+                  <div className="w-6 h-px bg-primary/30 my-1" />
+                  <div className="text-[9px] font-sans tracking-[0.25em] uppercase text-muted-foreground leading-relaxed">
+                    {stat.label}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         </section>
       )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* BROWSE BY MARKET                                                     */}
+      {/* ------------------------------------------------------------------ */}
+      <section className="border-t border-border/40 py-24 md:py-28">
+        <div className="container mx-auto px-4 md:px-8">
+          <div className="mb-12">
+            <div className="text-[10px] font-sans tracking-[0.3em] uppercase text-primary mb-4">Browse by Market</div>
+            <h2 className="text-3xl md:text-4xl font-serif">Music for every world</h2>
+            <div className="w-12 h-px bg-primary mt-6" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              {
+                slug: "western",
+                label: "Western",
+                tagline: "Hollywood-grade cinematic scores",
+                sub: "Orchestral · Electronic · Soundtrack",
+                color: "from-blue-900/20",
+              },
+              {
+                slug: "bollywood",
+                label: "Bollywood / Eastern",
+                tagline: "Authentic South Asian music",
+                sub: "Bollywood · Indian Classical · Fusion",
+                color: "from-amber-900/20",
+              },
+              {
+                slug: "international",
+                label: "International",
+                tagline: "Cross-cultural world music",
+                sub: "World · Fusion · Global",
+                color: "from-green-900/20",
+              },
+              {
+                slug: "all",
+                label: "All Music",
+                tagline: "The complete catalogue",
+                sub: "Every genre · Every mood",
+                color: "from-primary/15",
+              },
+            ].map((market) => (
+              <Link key={market.slug} href={`/music/${market.slug}`}>
+                <div className={`group relative border border-border/40 bg-gradient-to-br ${market.color} via-transparent to-transparent hover:border-primary/40 transition-all duration-500 p-7 cursor-pointer h-full flex flex-col`}>
+                  <div className="text-[9px] font-sans tracking-[0.3em] uppercase text-muted-foreground mb-4">{market.sub}</div>
+                  <h3 className="font-serif text-xl mb-2 group-hover:text-primary transition-colors leading-tight">
+                    {market.label}
+                  </h3>
+                  <p className="text-xs text-muted-foreground font-serif italic flex-1 leading-relaxed">{market.tagline}</p>
+                  <div className="mt-6 flex items-center gap-2">
+                    <div className="w-4 h-px bg-primary/40 group-hover:w-8 transition-all duration-300" />
+                    <span className="text-[9px] uppercase tracking-widest text-primary/50 group-hover:text-primary transition-colors">Explore</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ------------------------------------------------------------------ */}
       {/* COLLABORATORS / CLIENTS                                              */}

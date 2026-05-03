@@ -17,6 +17,17 @@ import {
 } from "@/lib/access";
 import { validateMediaUrl, type MediaValidation } from "@/lib/media";
 import { IS_MOCK_MODE } from "@/lib/api-config";
+import {
+  getAnalyticsSummary, clearPageViews, type AnalyticsSummary,
+} from "@/lib/analytics";
+import {
+  getEnquiries, markEnquiryRead, markAllRead, deleteEnquiry, getUnreadCount,
+  type Enquiry,
+} from "@/lib/enquiries";
+import {
+  getSocialMetrics, saveSocialMetrics, getTotalFollowers,
+  type SocialMetrics, type SocialPlatform,
+} from "@/lib/social";
 
 // ---------------------------------------------------------------------------
 // Error Boundary
@@ -56,7 +67,7 @@ class AccessLogErrorBoundary extends Component<{ children: ReactNode }, EBState>
 // Types & constants
 // ---------------------------------------------------------------------------
 
-type AdminTab = "dashboard" | "catalogue" | "content" | "access-log" | "media";
+type AdminTab = "dashboard" | "catalogue" | "content" | "enquiries" | "access-log" | "traffic" | "social" | "media";
 
 const EMPTY_TRACK: Track = {
   id: "", slug: "", title: "", artist: "Conduct Alchemy", genre: GENRE_OPTIONS[0],
@@ -250,6 +261,20 @@ export default function Admin() {
   const [logUseFilter, setLogUseFilter] = useState<string>("");
   const [logSort, setLogSort] = useState<"newest" | "oldest">("newest");
 
+  // Traffic tab
+  const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
+
+  // Enquiries tab
+  const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [enquirySearch, setEnquirySearch] = useState("");
+  const [expandedEnquiry, setExpandedEnquiry] = useState<string | null>(null);
+
+  // Social tab
+  const [socialMetrics, setSocialMetrics] = useState<SocialMetrics | null>(null);
+  const [isEditingSocial, setIsEditingSocial] = useState(false);
+  const [socialDraft, setSocialDraft] = useState<SocialMetrics | null>(null);
+
   // Media test state
   const [testAudioUrl, setTestAudioUrl] = useState("");
   const [testPreviewUrl, setTestPreviewUrl] = useState("");
@@ -291,6 +316,18 @@ export default function Admin() {
   useEffect(() => {
     if (activeTab === "access-log" || activeTab === "dashboard") {
       loadSubmissions();
+    }
+    if (activeTab === "traffic") {
+      setAnalytics(getAnalyticsSummary());
+    }
+    if (activeTab === "enquiries") {
+      setEnquiries(getEnquiries());
+      setUnreadCount(getUnreadCount());
+    }
+    if (activeTab === "social") {
+      const m = getSocialMetrics();
+      setSocialMetrics(m);
+      setSocialDraft(JSON.parse(JSON.stringify(m)) as SocialMetrics);
     }
   }, [activeTab, loadSubmissions]);
 
@@ -656,12 +693,20 @@ export default function Admin() {
           Site Content
           {hasDraft && <span className="ml-2 text-[8px] uppercase bg-amber-400/20 text-amber-400 px-1.5 py-0.5 rounded-sm">Draft</span>}
         </button>
+        <button onClick={() => setActiveTab("enquiries")} className={tabCls("enquiries")}>
+          Enquiries
+          {unreadCount > 0 && (
+            <span className="ml-2 text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-sm">{unreadCount}</span>
+          )}
+        </button>
         <button onClick={() => setActiveTab("access-log")} className={tabCls("access-log")}>
           Access Log
           {submissions.length > 0 && (
             <span className="ml-2 text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-sm">{submissions.length}</span>
           )}
         </button>
+        <button onClick={() => setActiveTab("traffic")} className={tabCls("traffic")}>Traffic</button>
+        <button onClick={() => setActiveTab("social")} className={tabCls("social")}>Social</button>
         <button onClick={() => setActiveTab("media")} className={tabCls("media")}>Media Test</button>
       </div>
 
@@ -1688,6 +1733,417 @@ export default function Admin() {
           </section>
         </div>
       )}
+
+      {/* ================================================================== */}
+      {/* TAB: ENQUIRIES                                                       */}
+      {/* ================================================================== */}
+      {activeTab === "enquiries" && (
+        <div className="space-y-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-serif">Enquiries</h2>
+              <p className="text-[10px] font-sans text-muted-foreground mt-1 tracking-wide">
+                Messages received via the Contact form — stored locally in this browser.
+              </p>
+            </div>
+            <div className="flex gap-3 flex-wrap">
+              {unreadCount > 0 && (
+                <button
+                  onClick={() => { markAllRead(); setEnquiries(getEnquiries()); setUnreadCount(0); }}
+                  className="text-[10px] uppercase tracking-widest border border-border/50 px-4 py-2 hover:border-primary/50 hover:text-primary transition-colors"
+                >
+                  Mark All Read
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Stats strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <StatCard label="Total" value={enquiries.length} />
+            <StatCard label="Unread" value={unreadCount} />
+            <StatCard label="This Month" value={enquiries.filter(e => e.timestamp.startsWith(new Date().toISOString().slice(0,7))).length} />
+            <StatCard label="Licensing" value={enquiries.filter(e => e.subject === "Licensing / Sync").length} sub="Most common" />
+          </div>
+
+          {/* Search */}
+          <div>
+            <input
+              type="text"
+              placeholder="Search by name, email, or subject…"
+              value={enquirySearch}
+              onChange={e => setEnquirySearch(e.target.value)}
+              className={inputCls + " max-w-sm"}
+            />
+          </div>
+
+          {/* List */}
+          {enquiries.length === 0 ? (
+            <div className="border border-border/40 bg-card/10 py-16 text-center">
+              <p className="text-muted-foreground font-serif italic">No enquiries yet.</p>
+              <p className="text-[10px] font-sans text-muted-foreground/50 mt-2 tracking-wide">Messages submitted via the Contact page will appear here.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {enquiries
+                .filter(e => {
+                  if (!enquirySearch) return true;
+                  const q = enquirySearch.toLowerCase();
+                  return e.name.toLowerCase().includes(q) || e.email.toLowerCase().includes(q) || e.subject.toLowerCase().includes(q) || e.message.toLowerCase().includes(q);
+                })
+                .map(e => (
+                  <div key={e.id} className={`border transition-colors ${e.read ? "border-border/30 bg-card/10" : "border-primary/30 bg-primary/5"}`}>
+                    <div className="px-5 py-4 flex items-start gap-4 cursor-pointer" onClick={() => {
+                      setExpandedEnquiry(expandedEnquiry === e.id ? null : e.id);
+                      if (!e.read) {
+                        markEnquiryRead(e.id);
+                        setEnquiries(getEnquiries());
+                        setUnreadCount(getUnreadCount());
+                      }
+                    }}>
+                      {!e.read && <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-1.5" />}
+                      {e.read && <div className="w-2 h-2 rounded-full bg-transparent border border-border/40 shrink-0 mt-1.5" />}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <span className="font-serif text-sm">{e.name}</span>
+                            <span className="text-[10px] text-muted-foreground ml-2">{e.email}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[9px] uppercase tracking-widest border border-border/40 px-2 py-0.5 text-muted-foreground">{e.subject}</span>
+                            <span className="text-[9px] text-muted-foreground whitespace-nowrap">{safeFormatDate(e.timestamp)}</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{e.message}</p>
+                      </div>
+                      <span className="text-muted-foreground/40 text-[10px] shrink-0">{expandedEnquiry === e.id ? "▲" : "▼"}</span>
+                    </div>
+
+                    {expandedEnquiry === e.id && (
+                      <div className="border-t border-border/30 px-5 py-4 space-y-4 bg-background/30">
+                        <div className="whitespace-pre-wrap text-sm font-serif text-muted-foreground leading-relaxed">{e.message}</div>
+                        {e.trackReference && (
+                          <div className="text-[10px] font-sans text-muted-foreground">
+                            <span className="uppercase tracking-widest mr-2">Track ref:</span>{e.trackReference}
+                          </div>
+                        )}
+                        <div className="flex gap-3 pt-2 border-t border-border/20">
+                          <a
+                            href={`mailto:${e.email}?subject=Re: ${encodeURIComponent(e.subject)}`}
+                            className="text-[10px] uppercase tracking-widest border border-border/50 px-4 py-2 hover:border-primary/50 hover:text-primary transition-colors"
+                          >
+                            Reply via Email
+                          </a>
+                          <button
+                            onClick={() => { if (confirm("Delete this enquiry?")) { deleteEnquiry(e.id); setEnquiries(getEnquiries()); setUnreadCount(getUnreadCount()); setExpandedEnquiry(null); } }}
+                            className="text-[10px] uppercase tracking-widest border border-red-500/30 text-red-400/70 px-4 py-2 hover:bg-red-500/10 transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ================================================================== */}
+      {/* TAB: TRAFFIC                                                         */}
+      {/* ================================================================== */}
+      {activeTab === "traffic" && analytics && (
+        <div className="space-y-10">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-serif">Site Traffic</h2>
+              <p className="text-[10px] font-sans text-muted-foreground mt-1 tracking-wide">
+                Browser-level page views for this device. Tracks every route visit from first load.
+              </p>
+            </div>
+            <button
+              onClick={() => { if (confirm("Clear all traffic data for this browser?")) { clearPageViews(); setAnalytics(getAnalyticsSummary()); } }}
+              className="text-[10px] uppercase tracking-widest border border-border/50 px-4 py-2 hover:border-red-400/50 hover:text-red-400 transition-colors"
+            >
+              Clear Data
+            </button>
+          </div>
+
+          {/* KPIs */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <StatCard label="Total Page Views" value={analytics.totalViews} sub="All time" />
+            <StatCard label="Unique Sessions" value={analytics.uniqueSessions} sub="Browser sessions" />
+            <StatCard label="Pages Tracked" value={analytics.viewsByPath.length} sub="Distinct routes" />
+          </div>
+
+          {/* 30-day bar chart */}
+          <div>
+            <h3 className={sectionHead}>Views — Last 30 Days</h3>
+            {analytics.last30Days.every(d => d.views === 0) ? (
+              <p className="text-sm text-muted-foreground font-serif italic">No data yet — browse the site to start tracking.</p>
+            ) : (
+              <div className="space-y-2">
+                {(() => {
+                  const max = Math.max(...analytics.last30Days.map(d => d.views), 1);
+                  return analytics.last30Days.filter(d => d.views > 0).map(d => (
+                    <div key={d.date} className="flex items-center gap-3">
+                      <span className="text-[9px] font-mono text-muted-foreground w-24 shrink-0">{d.date}</span>
+                      <div className="flex-1 bg-border/20 h-5 relative">
+                        <div
+                          className="bg-primary/60 h-5 transition-all"
+                          style={{ width: `${(d.views / max) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-mono text-muted-foreground w-8 text-right shrink-0">{d.views}</span>
+                    </div>
+                  ));
+                })()}
+              </div>
+            )}
+          </div>
+
+          {/* Top pages */}
+          {analytics.viewsByPath.length > 0 && (
+            <div>
+              <h3 className={sectionHead}>Top Pages</h3>
+              <div className="space-y-2">
+                {analytics.viewsByPath.slice(0, 15).map((p, i) => {
+                  const max = analytics.viewsByPath[0]?.views || 1;
+                  return (
+                    <div key={p.path} className="flex items-center gap-4 border border-border/30 bg-card/10 px-4 py-3">
+                      <span className="text-xl font-serif text-muted-foreground/30 w-6 shrink-0">{i + 1}</span>
+                      <span className="font-mono text-sm flex-1 truncate">{p.path}</span>
+                      <div className="w-32 bg-border/20 h-2 shrink-0">
+                        <div className="bg-primary/50 h-2" style={{ width: `${(p.views / max) * 100}%` }} />
+                      </div>
+                      <span className="text-[10px] font-mono text-muted-foreground w-12 text-right shrink-0">{p.views} view{p.views !== 1 ? "s" : ""}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Recent visits */}
+          {analytics.recentViews.length > 0 && (
+            <div>
+              <h3 className={sectionHead}>Recent Visits</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px] font-sans">
+                  <thead>
+                    <tr className="border-b border-border/40">
+                      <th className="text-left px-3 py-2 text-[9px] tracking-widest uppercase text-muted-foreground">Page</th>
+                      <th className="text-left px-3 py-2 text-[9px] tracking-widest uppercase text-muted-foreground">When</th>
+                      <th className="text-left px-3 py-2 text-[9px] tracking-widest uppercase text-muted-foreground">Session</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analytics.recentViews.map((v, i) => (
+                      <tr key={i} className="border-b border-border/20 hover:bg-card/10">
+                        <td className="px-3 py-2 font-mono">{v.path}</td>
+                        <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{safeFormatDate(v.timestamp)}</td>
+                        <td className="px-3 py-2 font-mono text-muted-foreground/50 text-[9px]">{v.sessionId.slice(-6)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ================================================================== */}
+      {/* TAB: SOCIAL                                                          */}
+      {/* ================================================================== */}
+      {activeTab === "social" && socialMetrics && socialDraft && (
+        <div className="space-y-10">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-serif">Social Metrics</h2>
+              <p className="text-[10px] font-sans text-muted-foreground mt-1 tracking-wide">
+                Manually maintained social stats — update these whenever you check your platforms.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              {!isEditingSocial ? (
+                <button
+                  onClick={() => { setSocialDraft(JSON.parse(JSON.stringify(socialMetrics)) as SocialMetrics); setIsEditingSocial(true); }}
+                  className="text-[10px] uppercase tracking-widest border border-border px-5 py-2.5 hover:bg-border/30 transition-colors"
+                >
+                  Update Metrics
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => { setSocialDraft(JSON.parse(JSON.stringify(socialMetrics)) as SocialMetrics); setIsEditingSocial(false); }}
+                    className="text-[10px] uppercase tracking-widest border border-border/50 text-muted-foreground px-4 py-2 hover:border-red-400/40 hover:text-red-400 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      saveSocialMetrics(socialDraft);
+                      const saved = getSocialMetrics();
+                      setSocialMetrics(saved);
+                      setSocialDraft(JSON.parse(JSON.stringify(saved)) as SocialMetrics);
+                      setIsEditingSocial(false);
+                    }}
+                    className="text-[10px] uppercase tracking-widest border border-primary/60 text-primary bg-primary/5 px-5 py-2 hover:bg-primary hover:text-black transition-colors"
+                  >
+                    Save Metrics
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Summary KPIs */}
+          {!isEditingSocial && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-2">
+              <StatCard
+                label="Total Followers"
+                value={getTotalFollowers(socialMetrics).toLocaleString()}
+                sub={socialMetrics.updatedAt ? `Updated ${safeFormatDate(socialMetrics.updatedAt)}` : "Not yet updated"}
+              />
+              <StatCard
+                label="Platforms Tracked"
+                value={socialMetrics.platforms.filter(p => p.followers > 0 || p.handle).length}
+                sub="With data entered"
+              />
+              <StatCard
+                label="Top Platform"
+                value={[...socialMetrics.platforms].sort((a, b) => b.followers - a.followers)[0]?.name ?? "—"}
+                sub={`${[...socialMetrics.platforms].sort((a, b) => b.followers - a.followers)[0]?.followers.toLocaleString() ?? 0} followers`}
+              />
+            </div>
+          )}
+
+          {/* Platform cards — view mode */}
+          {!isEditingSocial && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {socialMetrics.platforms.map(p => (
+                <div key={p.key} className="border border-border/40 bg-card/20 p-5">
+                  <div className="text-[10px] font-sans tracking-[0.2em] uppercase text-muted-foreground mb-3">{p.name}</div>
+                  {p.handle && <div className="text-sm font-mono text-primary mb-2">{p.handle}</div>}
+                  <div className="text-2xl font-serif mb-1">{p.followers > 0 ? p.followers.toLocaleString() : "—"}</div>
+                  <div className="text-[9px] tracking-widest text-muted-foreground uppercase mb-2">Followers</div>
+                  {p.posts > 0 && <div className="text-[10px] text-muted-foreground">{p.posts} posts</div>}
+                  {p.engagement && <div className="text-[10px] text-muted-foreground">{p.engagement} avg. engagement</div>}
+                  {p.url && (
+                    <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-[9px] text-primary/60 hover:text-primary transition-colors mt-2 block truncate">
+                      {p.url}
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Edit mode */}
+          {isEditingSocial && (
+            <div className="space-y-6">
+              {socialDraft.platforms.map((p, idx) => (
+                <div key={p.key} className="border border-border/40 bg-card/10 p-6">
+                  <div className="text-[10px] font-sans tracking-[0.25em] uppercase text-primary mb-5">{p.name}</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelCls}>Handle / Username</label>
+                      <input
+                        type="text"
+                        value={p.handle}
+                        onChange={e => {
+                          const updated = [...socialDraft.platforms];
+                          updated[idx] = { ...p, handle: e.target.value };
+                          setSocialDraft({ ...socialDraft, platforms: updated });
+                        }}
+                        placeholder={`@${p.name.toLowerCase()}_handle`}
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Followers</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={p.followers || ""}
+                        onChange={e => {
+                          const updated = [...socialDraft.platforms];
+                          updated[idx] = { ...p, followers: Number(e.target.value) || 0 };
+                          setSocialDraft({ ...socialDraft, platforms: updated });
+                        }}
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Posts / Tracks</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={p.posts || ""}
+                        onChange={e => {
+                          const updated = [...socialDraft.platforms];
+                          updated[idx] = { ...p, posts: Number(e.target.value) || 0 };
+                          setSocialDraft({ ...socialDraft, platforms: updated });
+                        }}
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Avg. Engagement</label>
+                      <input
+                        type="text"
+                        value={p.engagement}
+                        onChange={e => {
+                          const updated = [...socialDraft.platforms];
+                          updated[idx] = { ...p, engagement: e.target.value };
+                          setSocialDraft({ ...socialDraft, platforms: updated });
+                        }}
+                        placeholder="e.g. 3.2%"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className={labelCls}>Profile URL</label>
+                      <input
+                        type="url"
+                        value={p.url}
+                        onChange={e => {
+                          const updated = [...socialDraft.platforms];
+                          updated[idx] = { ...p, url: e.target.value };
+                          setSocialDraft({ ...socialDraft, platforms: updated });
+                        }}
+                        placeholder={`https://${p.name.toLowerCase()}.com/yourchannel`}
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <div>
+                <label className={labelCls}>Notes</label>
+                <textarea
+                  value={socialDraft.notes}
+                  onChange={e => setSocialDraft({ ...socialDraft, notes: e.target.value })}
+                  rows={3}
+                  placeholder="Internal notes about your social strategy…"
+                  className={`${inputCls} resize-none`}
+                />
+              </div>
+            </div>
+          )}
+
+          {socialMetrics.notes && !isEditingSocial && (
+            <div className="border border-border/30 bg-card/10 px-5 py-4">
+              <div className={sectionHead}>Notes</div>
+              <p className="text-sm font-serif italic text-muted-foreground">{socialMetrics.notes}</p>
+            </div>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }
