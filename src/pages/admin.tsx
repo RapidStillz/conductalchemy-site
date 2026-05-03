@@ -244,6 +244,9 @@ export default function Admin() {
   const [editorGenre, setEditorGenre] = useState(GENRE_OPTIONS[0]);
   const [isAddingGenre, setIsAddingGenre] = useState(false);
   const [customGenre, setCustomGenre] = useState("");
+  // Inline audio test state for the track editor
+  const [editorAudioTestUrl, setEditorAudioTestUrl] = useState<string | null>(null);
+  const [editorPreviewTestUrl, setEditorPreviewTestUrl] = useState<string | null>(null);
 
   // Draft / Publish state
   const [hasDraft, setHasDraft] = useState(false);
@@ -413,6 +416,8 @@ export default function Admin() {
     setEditorGenre(t.genre || GENRE_OPTIONS[0]);
     setIsAddingGenre(false);
     setCustomGenre("");
+    setEditorAudioTestUrl(null);
+    setEditorPreviewTestUrl(null);
   };
 
   const openNewTrack = () => {
@@ -423,6 +428,8 @@ export default function Admin() {
     setEditorGenre(GENRE_OPTIONS[0]);
     setIsAddingGenre(false);
     setCustomGenre("");
+    setEditorAudioTestUrl(null);
+    setEditorPreviewTestUrl(null);
   };
 
   const handleSaveTrack = (e: React.FormEvent<HTMLFormElement>) => {
@@ -1046,11 +1053,81 @@ export default function Admin() {
                 <div className="space-y-4">
                   <div>
                     <label className={labelCls}>Direct Audio URL (full track)</label>
-                    <input name="audioUrl" defaultValue={editingTrack.audioUrl || ""} placeholder="https://..." className={inputCls} />
+                    <p className="text-[9px] font-sans text-muted-foreground/50 mb-1.5 leading-relaxed">
+                      Requires a publicly accessible direct .mp3 / .wav / .ogg URL. Test: https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3
+                    </p>
+                    <div className="flex gap-2">
+                      <input id="input-audioUrl" name="audioUrl" defaultValue={editingTrack.audioUrl || ""} placeholder="https://example.com/track.mp3" className={`${inputCls} flex-1`} />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const el = document.getElementById("input-audioUrl") as HTMLInputElement | null;
+                          setEditorAudioTestUrl(el?.value?.trim() || null);
+                        }}
+                        className="border border-border/50 text-muted-foreground px-3 py-1.5 text-[10px] uppercase tracking-widest hover:border-primary/50 hover:text-primary transition-colors whitespace-nowrap shrink-0"
+                      >
+                        Test ▶
+                      </button>
+                    </div>
+                    {editorAudioTestUrl && (
+                      <div className="mt-2 space-y-1.5">
+                        <div className="text-[9px] font-sans text-muted-foreground/60 tracking-wide">Testing: {editorAudioTestUrl}</div>
+                        <audio
+                          key={editorAudioTestUrl}
+                          controls
+                          className="w-full"
+                          onError={() => {}}
+                        >
+                          <source src={editorAudioTestUrl} />
+                        </audio>
+                        <button
+                          type="button"
+                          onClick={() => setEditorAudioTestUrl(null)}
+                          className="text-[9px] text-muted-foreground/50 hover:text-muted-foreground transition-colors uppercase tracking-widest"
+                        >
+                          ✕ Close test player
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className={labelCls}>Preview Audio URL (45s clip)</label>
-                    <input name="previewAudioUrl" defaultValue={editingTrack.previewAudioUrl || ""} placeholder="https://..." className={inputCls} />
+                    <p className="text-[9px] font-sans text-muted-foreground/50 mb-1.5 leading-relaxed">
+                      Optional short clip for private tracks. If omitted, the player will time-limit the full audio URL to 45 seconds.
+                    </p>
+                    <div className="flex gap-2">
+                      <input id="input-previewAudioUrl" name="previewAudioUrl" defaultValue={editingTrack.previewAudioUrl || ""} placeholder="https://example.com/preview.mp3" className={`${inputCls} flex-1`} />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const el = document.getElementById("input-previewAudioUrl") as HTMLInputElement | null;
+                          setEditorPreviewTestUrl(el?.value?.trim() || null);
+                        }}
+                        className="border border-border/50 text-muted-foreground px-3 py-1.5 text-[10px] uppercase tracking-widest hover:border-primary/50 hover:text-primary transition-colors whitespace-nowrap shrink-0"
+                      >
+                        Test ▶
+                      </button>
+                    </div>
+                    {editorPreviewTestUrl && (
+                      <div className="mt-2 space-y-1.5">
+                        <div className="text-[9px] font-sans text-muted-foreground/60 tracking-wide">Testing: {editorPreviewTestUrl}</div>
+                        <audio
+                          key={editorPreviewTestUrl}
+                          controls
+                          className="w-full"
+                          onError={() => {}}
+                        >
+                          <source src={editorPreviewTestUrl} />
+                        </audio>
+                        <button
+                          type="button"
+                          onClick={() => setEditorPreviewTestUrl(null)}
+                          className="text-[9px] text-muted-foreground/50 hover:text-muted-foreground transition-colors uppercase tracking-widest"
+                        >
+                          ✕ Close test player
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className={labelCls}>Video URL (YouTube / Vimeo)</label>
@@ -1579,7 +1656,7 @@ export default function Admin() {
                 className={inputCls}
               />
               <ValidationBadge result={audioV} />
-              {testAudioUrl && audioV.isValid && (
+              {testAudioUrl && (
                 <div className="mt-3">
                   <audio
                     key={testAudioUrl}
@@ -1609,7 +1686,7 @@ export default function Admin() {
                 className={inputCls}
               />
               <ValidationBadge result={previewV} />
-              {testPreviewUrl && previewV.isValid && (
+              {testPreviewUrl && (
                 <div className="mt-3">
                   <audio
                     key={testPreviewUrl}

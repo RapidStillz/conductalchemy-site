@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { getTracks, Track, AccessStatus } from "@/lib/cms";
 import { isTrackUnlocked } from "@/lib/access";
 import { useSEO } from "@/hooks/use-seo";
@@ -19,12 +19,106 @@ function LockIcon({ className }: { className?: string }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Inline mini audio player used in catalogue cards
+// ---------------------------------------------------------------------------
+
+function MiniPlayer({ url, onError }: { url: string; onError?: () => void }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [errored, setErrored] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    const onCanPlay = () => setReady(true);
+    const onMeta = () => { setDuration(audio.duration); setReady(true); };
+    const onTime = () => setCurrentTime(audio.currentTime);
+    const onEnded = () => { setPlaying(false); setCurrentTime(0); };
+    const onErr = () => { setErrored(true); setReady(false); onError?.(); };
+    audio.addEventListener("canplay", onCanPlay);
+    audio.addEventListener("loadedmetadata", onMeta);
+    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("error", onErr);
+    return () => { audio.pause(); audio.src = ""; };
+  }, [url, onError]);
+
+  function toggle() {
+    const a = audioRef.current;
+    if (!a) return;
+    if (playing) { a.pause(); setPlaying(false); }
+    else { a.play().catch(() => { setErrored(true); setPlaying(false); }); setPlaying(true); }
+  }
+
+  function seek(e: React.MouseEvent<HTMLDivElement>) {
+    const a = audioRef.current;
+    if (!a || duration === 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    a.currentTime = (e.clientX - rect.left) / rect.width * duration;
+  }
+
+  const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}`;
+
+  if (errored) {
+    return (
+      <div className="flex items-center gap-2 text-[9px] font-sans text-red-400/70 border border-red-400/20 bg-red-400/5 px-3 py-2">
+        <span>✗</span> Audio unavailable — URL may not be publicly accessible.
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        onClick={e => { e.preventDefault(); toggle(); }}
+        disabled={!ready}
+        className="w-7 h-7 border border-primary/40 flex items-center justify-center shrink-0 text-primary hover:bg-primary/10 transition-colors disabled:opacity-30"
+        aria-label={playing ? "Pause preview" : "Play preview"}
+      >
+        {playing ? (
+          <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3">
+            <rect x="2" y="1.5" width="2.5" height="9" rx="0.4" fill="currentColor"/>
+            <rect x="7.5" y="1.5" width="2.5" height="9" rx="0.4" fill="currentColor"/>
+          </svg>
+        ) : (
+          <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3">
+            <path d="M3 1.5l7 4.5-7 4.5V1.5z" fill="currentColor"/>
+          </svg>
+        )}
+      </button>
+
+      <div className="flex-1 space-y-1 min-w-0">
+        <div
+          className="h-[2px] bg-border/40 relative cursor-pointer"
+          onClick={e => { e.preventDefault(); seek(e); }}
+        >
+          <div className="absolute left-0 top-0 h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+        </div>
+        <div className="flex justify-between text-[8px] font-sans text-muted-foreground/60">
+          <span>{fmt(currentTime)}</span>
+          {duration > 0 && <span>{fmt(duration)}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
+
 export default function Music() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [activeMood, setActiveMood] = useState<string | null>(null);
   const [activeGenre, setActiveGenre] = useState<string | null>(null);
   const [activeUseCase, setActiveUseCase] = useState<string | null>(null);
   const [accessFilter, setAccessFilter] = useState<"all" | "public" | "private">("all");
+  const [expandedPreviewId, setExpandedPreviewId] = useState<string | null>(null);
 
   useSEO({
     title: "Catalogue",
@@ -150,6 +244,11 @@ export default function Music() {
               const unlocked = isTrackUnlocked(track.id);
               const href = `/music/${track.slug || track.id}`;
 
+              // Determine the best preview URL: explicit preview clip, then full audio
+              const previewUrl = track.previewAudioUrl || track.audioUrl;
+              const hasAudio = !!previewUrl;
+              const isExpanded = expandedPreviewId === track.id;
+
               return (
                 <div key={track.id} className="group relative border border-border/40 bg-card/20 hover:border-primary/40 transition-colors duration-300 overflow-hidden flex flex-col">
                   {track.coverArtUrl && (
@@ -182,20 +281,68 @@ export default function Music() {
                       </p>
                     )}
 
+                    {/* Mini player — expands when Play Preview is clicked */}
+                    {isExpanded && previewUrl && (
+                      <div className="mb-4 relative z-10">
+                        <div className="text-[8px] font-sans tracking-[0.2em] uppercase text-muted-foreground/60 mb-2">
+                          {track.previewAudioUrl ? "Preview Clip" : isPrivate && !unlocked ? "45s Preview" : "Full Track Preview"}
+                        </div>
+                        <MiniPlayer
+                          url={previewUrl}
+                          onError={() => {}}
+                        />
+                      </div>
+                    )}
+
                     <div className="flex flex-wrap gap-2 mt-auto pt-4 border-t border-border/20 justify-between items-end">
                       <div className="flex flex-wrap gap-2">
                         {track.mood.map((m) => (
                           <span key={m} className="text-[10px] uppercase tracking-widest text-muted-foreground border border-border/40 px-2 py-1">{m}</span>
                         ))}
                       </div>
-                      {isPrivate && !unlocked && (
-                        <span className="text-[9px] font-sans tracking-widest text-amber-400/80 uppercase flex items-center gap-1">
-                          <LockIcon className="w-2.5 h-2.5" />Preview
-                        </span>
-                      )}
-                      {isPrivate && unlocked && (
-                        <span className="text-[9px] font-sans tracking-widest text-green-400/80 uppercase">Unlocked</span>
-                      )}
+
+                      <div className="flex items-center gap-2">
+                        {/* Play Preview button */}
+                        {hasAudio && (
+                          <button
+                            onClick={e => {
+                              e.preventDefault();
+                              setExpandedPreviewId(isExpanded ? null : track.id);
+                            }}
+                            className={`relative z-10 text-[9px] font-sans tracking-widest uppercase flex items-center gap-1.5 border px-2.5 py-1.5 transition-colors ${
+                              isExpanded
+                                ? "border-primary/60 text-primary bg-primary/5"
+                                : "border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary"
+                            }`}
+                          >
+                            {isExpanded ? (
+                              <>
+                                <svg viewBox="0 0 10 10" fill="none" className="w-2.5 h-2.5">
+                                  <rect x="1.5" y="1" width="2" height="8" rx="0.3" fill="currentColor"/>
+                                  <rect x="6.5" y="1" width="2" height="8" rx="0.3" fill="currentColor"/>
+                                </svg>
+                                Close
+                              </>
+                            ) : (
+                              <>
+                                <svg viewBox="0 0 10 10" fill="none" className="w-2.5 h-2.5">
+                                  <path d="M2 1l7 4-7 4V1z" fill="currentColor"/>
+                                </svg>
+                                Preview
+                              </>
+                            )}
+                          </button>
+                        )}
+
+                        {isPrivate && !unlocked && (
+                          <span className="text-[9px] font-sans tracking-widest text-amber-400/80 uppercase flex items-center gap-1">
+                            <LockIcon className="w-2.5 h-2.5" />Preview
+                          </span>
+                        )}
+                        {isPrivate && unlocked && (
+                          <span className="text-[9px] font-sans tracking-widest text-green-400/80 uppercase">Unlocked</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

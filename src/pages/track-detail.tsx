@@ -232,6 +232,7 @@ export default function TrackDetail() {
             <div className="mb-16">
               <TrackPlayer
                 audioUrl={track.audioUrl}
+                previewAudioUrl={track.previewAudioUrl}
                 isPrivate={isPrivate}
                 isUnlocked={unlocked}
                 trackTitle={track.title}

@@ -4,6 +4,7 @@ const PREVIEW_SECONDS = 45;
 
 interface TrackPlayerProps {
   audioUrl?: string;
+  previewAudioUrl?: string;
   isPrivate: boolean;
   isUnlocked: boolean;
   trackTitle: string;
@@ -33,6 +34,7 @@ function isGoogleDrive(url: string): boolean {
 
 export function TrackPlayer({
   audioUrl,
+  previewAudioUrl,
   isPrivate,
   isUnlocked,
   trackTitle,
@@ -48,9 +50,16 @@ export function TrackPlayer({
   const [audioError, setAudioError] = useState(false);
 
   const previewOnly = isPrivate && !isUnlocked;
-  const limit = previewOnly ? PREVIEW_SECONDS : Infinity;
+
+  // If we're in preview mode and an explicit preview clip was provided, use it
+  // and let it play to natural end (it's already a short clip).
+  // Otherwise fall back to audioUrl with a 45-second enforce limit.
+  const hasExplicitPreview = previewOnly && !!previewAudioUrl;
+  const effectiveUrl = hasExplicitPreview ? previewAudioUrl : audioUrl;
+  const limit = hasExplicitPreview ? Infinity : previewOnly ? PREVIEW_SECONDS : Infinity;
+
   const art = isArtefactMode;
-  const gdrive = !!(audioUrl && isGoogleDrive(audioUrl));
+  const gdrive = !!(effectiveUrl && isGoogleDrive(effectiveUrl));
 
   useEffect(() => {
     setHasAudio(false);
@@ -60,9 +69,9 @@ export function TrackPlayer({
     setDuration(0);
     setPreviewExpired(false);
 
-    if (!audioUrl) return;
+    if (!effectiveUrl) return;
 
-    const audio = new Audio(audioUrl);
+    const audio = new Audio(effectiveUrl);
     audioRef.current = audio;
 
     const onCanPlay = () => { setHasAudio(true); setAudioError(false); };
@@ -81,17 +90,17 @@ export function TrackPlayer({
       audio.pause();
       audio.src = "";
     };
-  }, [audioUrl]);
+  }, [effectiveUrl]);
 
   const enforceLimit = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (previewOnly && audio.currentTime >= limit) {
+    if (limit !== Infinity && audio.currentTime >= limit) {
       audio.pause();
       setPlaying(false);
       setPreviewExpired(true);
     }
-  }, [previewOnly, limit]);
+  }, [limit]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -114,7 +123,7 @@ export function TrackPlayer({
       audio.pause();
       setPlaying(false);
     } else {
-      if (previewOnly && currentTime >= limit) {
+      if (limit !== Infinity && currentTime >= limit) {
         setPreviewExpired(true);
         onRequestUnlock();
         return;
@@ -134,7 +143,7 @@ export function TrackPlayer({
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = (e.clientX - rect.left) / rect.width;
     const target = ratio * duration;
-    if (previewOnly && target > limit) {
+    if (limit !== Infinity && target > limit) {
       onRequestUnlock();
       return;
     }
@@ -144,7 +153,7 @@ export function TrackPlayer({
   }
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const previewProgress = duration > 0 ? (limit / duration) * 100 : 0;
+  const previewProgress = limit !== Infinity && duration > 0 ? (limit / duration) * 100 : 100;
 
   const primaryColor = art ? "#8a6e3a" : "var(--primary)";
   const mutedColor = art ? "rgba(26,21,16,0.2)" : "rgba(255,255,255,0.12)";
@@ -174,7 +183,11 @@ export function TrackPlayer({
         <div className="flex items-center justify-between">
           <div className={`text-[9px] font-sans tracking-[0.25em] uppercase ${textMuted}`}>
             {!isPrivate && "Full Access"}
-            {isPrivate && !isUnlocked && !previewExpired && `Preview · ${formatTime(PREVIEW_SECONDS)} available`}
+            {isPrivate && !isUnlocked && !previewExpired && (
+              hasExplicitPreview
+                ? "Preview Clip"
+                : `Preview · ${formatTime(PREVIEW_SECONDS)} available`
+            )}
             {isPrivate && !isUnlocked && previewExpired && "Preview ended"}
             {isPrivate && isUnlocked && (
               <span className={`flex items-center gap-1.5 ${textPrimary}`}>
@@ -219,14 +232,14 @@ export function TrackPlayer({
                     : isPreviewZone && !isUnlocked
                     ? art ? "rgba(138,110,58,0.25)" : "rgba(var(--primary-rgb, 180,150,80),0.25)"
                     : mutedColor,
-                  opacity: previewOnly && !isPreviewZone ? 0.35 : 1,
+                  opacity: previewOnly && limit !== Infinity && !isPreviewZone ? 0.35 : 1,
                 }}
               />
             );
           })}
 
-          {/* Preview cap line */}
-          {previewOnly && duration > 0 && (
+          {/* Preview cap line — only when enforcing time limit */}
+          {previewOnly && limit !== Infinity && duration > 0 && (
             <div
               className="absolute top-0 bottom-0 w-px"
               style={{
@@ -306,9 +319,9 @@ export function TrackPlayer({
                 className="absolute left-0 top-0 h-full transition-all"
                 style={{ width: `${progress}%`, background: primaryColor }}
               />
-              {previewOnly && (
+              {previewOnly && limit !== Infinity && (
                 <div
-                  className="absolute top-0 h-full opacity-40"
+                  className="absolute top-0 h-full"
                   style={{
                     left: `${previewProgress}%`,
                     right: 0,
@@ -321,7 +334,7 @@ export function TrackPlayer({
             <div className={`flex justify-between text-[9px] font-sans ${textMuted}`}>
               <span>{formatTime(currentTime)}</span>
               <span>
-                {previewOnly
+                {previewOnly && limit !== Infinity
                   ? `${formatTime(PREVIEW_SECONDS)} preview`
                   : duration > 0
                   ? formatTime(duration)
@@ -349,7 +362,7 @@ export function TrackPlayer({
         )}
 
         {/* No audio URL */}
-        {!audioUrl && !audioError && (
+        {!effectiveUrl && !audioError && (
           <p className={`text-[10px] font-sans leading-relaxed ${textMuted}`}>
             {previewOnly
               ? "Audio preview available upon upload. Unlock now to receive full stems and masters when released."
