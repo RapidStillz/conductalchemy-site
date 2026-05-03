@@ -323,9 +323,11 @@ export function UnlockModal({
                         ? art
                           ? "bg-[#8a6e3a] border-[#8a6e3a]"
                           : "bg-primary border-primary"
+                        : errors.terms
+                        ? "bg-transparent border-red-500"
                         : art
-                        ? "bg-transparent border-[#b5a882]"
-                        : "bg-transparent border-border/80"
+                        ? "bg-transparent border-[#8a6e3a]/70"
+                        : "bg-transparent border-muted-foreground/60"
                     }`}
                   >
                     {termsAccepted && (

@@ -556,6 +556,10 @@ export default function Admin() {
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const confirmed = confirm(
+      `Import "${file.name}"?\n\nThis will overwrite your current tracks and site content. Any unpublished drafts will also be replaced.\n\nMake sure you have exported a backup before continuing.`
+    );
+    if (!confirmed) { e.target.value = ""; return; }
     setImportStatus("Reading file...");
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -654,31 +658,30 @@ export default function Admin() {
           <p className="text-sm text-muted-foreground mt-2 font-sans">Dashboard, catalogue, access log, site content, and media testing.</p>
         </div>
         <div className="flex flex-col items-end gap-3">
-          <div className="flex items-center gap-3 flex-wrap justify-end">
+          <div className="flex items-center gap-4 flex-wrap justify-end">
             {importStatus && <span className="text-xs tracking-widest text-primary animate-pulse">{importStatus}</span>}
-            <button
-              onClick={handleExport}
-              title="Download all tracks and site content as a JSON backup file"
-              className="text-xs tracking-widest uppercase border border-border px-4 py-2.5 hover:bg-border/30 transition-colors"
-            >
-              Export Backup ↓
-            </button>
-            <label
-              title="Restore tracks and site content from a previously exported JSON backup"
-              className="text-xs tracking-widest uppercase border border-border px-4 py-2.5 hover:bg-border/30 transition-colors cursor-pointer"
-            >
-              Import Backup ↑
-              <input type="file" accept=".json" className="hidden" onChange={handleImport} />
-            </label>
+            <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={handleExport}
+                className="text-xs tracking-widest uppercase border border-border px-4 py-2.5 hover:bg-border/30 transition-colors"
+              >
+                Export Backup ↓
+              </button>
+              <p className="text-[9px] font-sans text-muted-foreground/40 tracking-wide">Download a backup of your CMS content</p>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <label className="text-xs tracking-widest uppercase border border-border px-4 py-2.5 hover:bg-border/30 transition-colors cursor-pointer">
+                Import Backup ↑
+                <input type="file" accept=".json" className="hidden" onChange={handleImport} />
+              </label>
+              <p className="text-[9px] font-sans text-muted-foreground/40 tracking-wide">Restore CMS content from a backup file</p>
+            </div>
             {hasDraft && (
               <button onClick={handlePublishAll} className="text-xs tracking-widest uppercase border border-amber-400/60 text-amber-400 bg-amber-400/5 px-5 py-2.5 hover:bg-amber-400 hover:text-black transition-colors">
                 Publish Now
               </button>
             )}
           </div>
-          <p className="text-[9px] font-sans text-muted-foreground/40 tracking-wide text-right">
-            Export/Import saves all tracks &amp; site content as a single .json file.
-          </p>
         </div>
       </div>
 
@@ -1390,29 +1393,14 @@ export default function Admin() {
                     </button>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-sans uppercase tracking-widest text-muted-foreground">Sort:</span>
-                  <button
-                    onClick={() => setLogSort("newest")}
-                    className={`text-[10px] uppercase tracking-widest px-3 py-1.5 border transition-colors ${
-                      logSort === "newest"
-                        ? "border-primary/60 text-primary bg-primary/5"
-                        : "border-border/40 text-muted-foreground hover:border-border"
-                    }`}
-                  >
-                    Newest first
-                  </button>
-                  <button
-                    onClick={() => setLogSort("oldest")}
-                    className={`text-[10px] uppercase tracking-widest px-3 py-1.5 border transition-colors ${
-                      logSort === "oldest"
-                        ? "border-primary/60 text-primary bg-primary/5"
-                        : "border-border/40 text-muted-foreground hover:border-border"
-                    }`}
-                  >
-                    Oldest first
-                  </button>
-                </div>
+                <select
+                  value={logSort}
+                  onChange={e => setLogSort(e.target.value as "newest" | "oldest")}
+                  className="bg-background border border-border/60 px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors text-muted-foreground"
+                >
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                </select>
               </div>
             )}
 

@@ -104,18 +104,29 @@ export function generateSlug(title: string): string {
 // ---------------------------------------------------------------------------
 
 export const GENRE_OPTIONS = [
+  // Standalone shorthand (new)
+  "Acoustic",
+  "Bollywood",
+  "Children / Family",
+  "Cinematic",
+  "Eastern Fusion",
+  "Experimental",
+  "Orchestral",
+  "Trailer",
+  "Western Pop",
+  // Compound originals (preserved)
   "Bollywood / Orchestral",
   "Cinematic / Orchestral",
-  "Electronic / Ambient",
-  "Jazz / Contemporary",
-  "World / Fusion",
-  "Hip-Hop / Urban",
-  "Rock / Alternative",
   "Classical / Orchestral",
-  "Folk / Acoustic",
-  "Pop / Contemporary",
   "Dance / Electronic",
+  "Electronic / Ambient",
+  "Folk / Acoustic",
+  "Hip-Hop / Urban",
+  "Jazz / Contemporary",
+  "Pop / Contemporary",
+  "Rock / Alternative",
   "Soundtrack",
+  "World / Fusion",
 ];
 
 export const MOOD_PRESETS = [
