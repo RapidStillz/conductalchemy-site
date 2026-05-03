@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
 import { getSiteContent, SiteContent } from "@/lib/cms";
+import { useSEO } from "@/hooks/use-seo";
 
 export default function About() {
   const [content, setContent] = useState<SiteContent | null>(null);
+
+  useSEO({
+    title: "About",
+    description:
+      "Conduct Alchemy is a music imprint forged at the intersection of Western orchestral tradition and cross-cultural storytelling — built for film, television, advertising, and the human experience.",
+    canonical: "https://conductalchemy.com/about",
+  });
 
   useEffect(() => {
     setContent(getSiteContent());
@@ -24,7 +32,7 @@ export default function About() {
             </div>
           </div>
         </div>
-        
+
         <div className="md:col-span-7 space-y-12">
           <div>
             <h1 className="text-4xl md:text-6xl font-serif mb-8">Forged in Resonance.</h1>

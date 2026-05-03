@@ -1,3 +1,7 @@
+// ---------------------------------------------------------------------------
+// CMS — types, defaults, slug helpers, draft/publish workflow, version history
+// ---------------------------------------------------------------------------
+
 export type AccessStatus = "Public" | "Private" | "NDA / Token Access Required";
 
 export interface SocialLinks {
@@ -10,6 +14,7 @@ export interface SocialLinks {
 
 export interface Track {
   id: string;
+  slug: string;
   title: string;
   artist: string;
   genre: string;
@@ -67,8 +72,34 @@ export interface SiteContent {
   proCtaText: string;
 }
 
+export interface HistoryEntry<T> {
+  data: T;
+  publishedAt: string;
+}
+
 // ---------------------------------------------------------------------------
-// Presets (used in CMS editor dropdowns)
+// Slug helpers
+// ---------------------------------------------------------------------------
+
+export function generateSlug(title: string): string {
+  return (title || "")
+    .toLowerCase()
+    .replace(/[àáâãäå]/g, "a")
+    .replace(/[èéêë]/g, "e")
+    .replace(/[ìíîï]/g, "i")
+    .replace(/[òóôõö]/g, "o")
+    .replace(/[ùúûü]/g, "u")
+    .replace(/[ñ]/g, "n")
+    .replace(/[ç]/g, "c")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+// ---------------------------------------------------------------------------
+// Presets
 // ---------------------------------------------------------------------------
 
 export const GENRE_OPTIONS = [
@@ -111,6 +142,7 @@ export const ACCESS_STATUS_OPTIONS: AccessStatus[] = [
 const DEFAULT_TRACKS: Track[] = [
   {
     id: "1",
+    slug: "rishte-naya",
     title: "Rishte Naya",
     artist: "Conduct Alchemy",
     genre: "Bollywood / Orchestral",
@@ -131,10 +163,13 @@ const DEFAULT_TRACKS: Track[] = [
     heroTrack: true,
     featuredOrder: 1,
     accessStatus: "Public",
+    collaborators: [],
+    socialLinks: {},
     createdAt: new Date().toISOString(),
   },
   {
     id: "2",
+    slug: "hobey-main-theme",
     title: "Hobey — Main Theme",
     artist: "Conduct Alchemy",
     genre: "Cinematic / Orchestral",
@@ -159,6 +194,8 @@ const DEFAULT_TRACKS: Track[] = [
     featured: true,
     featuredOrder: 2,
     accessStatus: "Private",
+    collaborators: [],
+    socialLinks: {},
     createdAt: new Date().toISOString(),
   },
 ];
@@ -188,21 +225,13 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
 };
 
 // ---------------------------------------------------------------------------
-// Storage helpers
+// Migration helpers
 // ---------------------------------------------------------------------------
-
-function seedIfEmpty() {
-  if (!localStorage.getItem("ca_tracks")) {
-    localStorage.setItem("ca_tracks", JSON.stringify(DEFAULT_TRACKS));
-  }
-  if (!localStorage.getItem("ca_site_content")) {
-    localStorage.setItem("ca_site_content", JSON.stringify(DEFAULT_SITE_CONTENT));
-  }
-}
 
 function migrateTracks(tracks: Track[]): Track[] {
   return tracks.map((t) => ({
     ...t,
+    slug: t.slug || generateSlug(t.title),
     accessStatus: (t.accessStatus ?? "Public") as AccessStatus,
     mood: Array.isArray(t.mood) ? t.mood : [],
     versions: Array.isArray(t.versions) ? t.versions : [],
@@ -227,32 +256,59 @@ function migrateSiteContent(raw: Partial<SiteContent>): SiteContent {
 }
 
 // ---------------------------------------------------------------------------
-// Public API
+// localStorage keys
+// ---------------------------------------------------------------------------
+
+const KEY_TRACKS = "ca_tracks";
+const KEY_TRACKS_DRAFT = "ca_tracks_draft";
+const KEY_TRACKS_HISTORY = "ca_tracks_history";
+const KEY_CONTENT = "ca_site_content";
+const KEY_CONTENT_DRAFT = "ca_site_content_draft";
+const KEY_CONTENT_HISTORY = "ca_site_content_history";
+
+// ---------------------------------------------------------------------------
+// Seed
+// ---------------------------------------------------------------------------
+
+function seedIfEmpty(): void {
+  if (!localStorage.getItem(KEY_TRACKS)) {
+    localStorage.setItem(KEY_TRACKS, JSON.stringify(DEFAULT_TRACKS));
+  }
+  if (!localStorage.getItem(KEY_CONTENT)) {
+    localStorage.setItem(KEY_CONTENT, JSON.stringify(DEFAULT_SITE_CONTENT));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PUBLISHED — read by public pages
 // ---------------------------------------------------------------------------
 
 export function getTracks(): Track[] {
   seedIfEmpty();
   try {
-    const raw = localStorage.getItem("ca_tracks");
-    const tracks: Track[] = raw ? JSON.parse(raw) : [];
-    return migrateTracks(tracks);
+    const raw = localStorage.getItem(KEY_TRACKS);
+    return migrateTracks(raw ? JSON.parse(raw) : DEFAULT_TRACKS);
   } catch {
     return migrateTracks(DEFAULT_TRACKS);
   }
 }
 
-export function getTrack(id: string): Track | undefined {
-  return getTracks().find((t) => t.id === id);
+/**
+ * Resolves a track by its numeric ID OR its slug — for backward compatibility
+ * when old links use numeric IDs and new links use slugs.
+ */
+export function getTrack(idOrSlug: string): Track | undefined {
+  return getTracks().find((t) => t.id === idOrSlug || t.slug === idOrSlug);
 }
 
 export function saveTracks(tracks: Track[]): void {
-  localStorage.setItem("ca_tracks", JSON.stringify(tracks));
+  localStorage.setItem(KEY_TRACKS, JSON.stringify(tracks));
 }
 
 export function getSiteContent(): SiteContent {
   seedIfEmpty();
   try {
-    const raw = localStorage.getItem("ca_site_content");
+    const raw = localStorage.getItem(KEY_CONTENT);
     return raw ? migrateSiteContent(JSON.parse(raw)) : DEFAULT_SITE_CONTENT;
   } catch {
     return DEFAULT_SITE_CONTENT;
@@ -260,5 +316,142 @@ export function getSiteContent(): SiteContent {
 }
 
 export function saveSiteContent(content: SiteContent): void {
-  localStorage.setItem("ca_site_content", JSON.stringify(content));
+  localStorage.setItem(KEY_CONTENT, JSON.stringify(content));
+}
+
+// ---------------------------------------------------------------------------
+// DRAFT — read/written by admin
+// ---------------------------------------------------------------------------
+
+export function getDraftTracks(): Track[] {
+  try {
+    const raw = localStorage.getItem(KEY_TRACKS_DRAFT);
+    if (!raw) return getTracks(); // No draft yet — start from published
+    return migrateTracks(JSON.parse(raw));
+  } catch {
+    return getTracks();
+  }
+}
+
+export function saveDraftTracks(tracks: Track[]): void {
+  localStorage.setItem(KEY_TRACKS_DRAFT, JSON.stringify(tracks));
+}
+
+export function getDraftSiteContent(): SiteContent {
+  try {
+    const raw = localStorage.getItem(KEY_CONTENT_DRAFT);
+    if (!raw) return getSiteContent();
+    return migrateSiteContent(JSON.parse(raw));
+  } catch {
+    return getSiteContent();
+  }
+}
+
+export function saveDraftSiteContent(content: SiteContent): void {
+  localStorage.setItem(KEY_CONTENT_DRAFT, JSON.stringify(content));
+}
+
+export function hasDraftChanges(): boolean {
+  return (
+    localStorage.getItem(KEY_TRACKS_DRAFT) !== null ||
+    localStorage.getItem(KEY_CONTENT_DRAFT) !== null
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PUBLISH — copies draft → published, saves old published to history
+// ---------------------------------------------------------------------------
+
+const MAX_HISTORY = 5;
+
+export function publishTracks(): void {
+  const draft = getDraftTracks();
+  const current = getTracks();
+  // Save current published to history
+  const history = getTrackHistory();
+  history.unshift({ data: current, publishedAt: new Date().toISOString() });
+  history.splice(MAX_HISTORY);
+  localStorage.setItem(KEY_TRACKS_HISTORY, JSON.stringify(history));
+  // Publish draft
+  localStorage.setItem(KEY_TRACKS, JSON.stringify(draft));
+  localStorage.removeItem(KEY_TRACKS_DRAFT);
+}
+
+export function publishSiteContent(): void {
+  const draft = getDraftSiteContent();
+  const current = getSiteContent();
+  const history = getSiteContentHistory();
+  history.unshift({ data: current, publishedAt: new Date().toISOString() });
+  history.splice(MAX_HISTORY);
+  localStorage.setItem(KEY_CONTENT_HISTORY, JSON.stringify(history));
+  localStorage.setItem(KEY_CONTENT, JSON.stringify(draft));
+  localStorage.removeItem(KEY_CONTENT_DRAFT);
+}
+
+export function publishAll(): void {
+  publishTracks();
+  publishSiteContent();
+}
+
+export function discardDraft(): void {
+  localStorage.removeItem(KEY_TRACKS_DRAFT);
+  localStorage.removeItem(KEY_CONTENT_DRAFT);
+}
+
+// ---------------------------------------------------------------------------
+// VERSION HISTORY
+// ---------------------------------------------------------------------------
+
+export function getTrackHistory(): HistoryEntry<Track[]>[] {
+  try {
+    const raw = localStorage.getItem(KEY_TRACKS_HISTORY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getSiteContentHistory(): HistoryEntry<SiteContent>[] {
+  try {
+    const raw = localStorage.getItem(KEY_CONTENT_HISTORY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function rollbackTracks(entry: HistoryEntry<Track[]>): void {
+  const current = getTracks();
+  const history = getTrackHistory().filter(
+    (h) => h.publishedAt !== entry.publishedAt
+  );
+  history.unshift({ data: current, publishedAt: new Date().toISOString() });
+  history.splice(MAX_HISTORY);
+  localStorage.setItem(KEY_TRACKS_HISTORY, JSON.stringify(history));
+  localStorage.setItem(KEY_TRACKS, JSON.stringify(entry.data));
+  localStorage.removeItem(KEY_TRACKS_DRAFT);
+}
+
+export function rollbackSiteContent(entry: HistoryEntry<SiteContent>): void {
+  const current = getSiteContent();
+  const history = getSiteContentHistory().filter(
+    (h) => h.publishedAt !== entry.publishedAt
+  );
+  history.unshift({ data: current, publishedAt: new Date().toISOString() });
+  history.splice(MAX_HISTORY);
+  localStorage.setItem(KEY_CONTENT_HISTORY, JSON.stringify(history));
+  localStorage.setItem(KEY_CONTENT, JSON.stringify(entry.data));
+  localStorage.removeItem(KEY_CONTENT_DRAFT);
+}
+
+// ---------------------------------------------------------------------------
+// PREVIEW — public pages can opt into draft content via ?preview=1
+// ---------------------------------------------------------------------------
+
+export function getPreviewTracks(): Track[] {
+  return getDraftTracks();
+}
+
+export function getPreviewSiteContent(): SiteContent {
+  return getDraftSiteContent();
 }

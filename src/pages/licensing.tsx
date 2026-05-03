@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
 import { getSiteContent, SiteContent } from "@/lib/cms";
+import { useSEO } from "@/hooks/use-seo";
 
 export default function Licensing() {
   const [content, setContent] = useState<SiteContent | null>(null);
+
+  useSEO({
+    title: "Licensing",
+    description:
+      "Sync licensing for film, television, advertising and digital media. Full stems, alternate edits, and custom commissions available. Work directly with the Conduct Alchemy team.",
+    canonical: "https://conductalchemy.com/licensing",
+  });
 
   useEffect(() => {
     setContent(getSiteContent());
@@ -55,7 +63,7 @@ export default function Licensing() {
                 </li>
               </ul>
             </section>
-            
+
             <section>
               <h3 className="text-xs font-sans tracking-[0.2em] text-primary uppercase mb-6">Sync Use Cases</h3>
               <div className="grid grid-cols-2 gap-4 text-sm font-serif italic text-muted-foreground">
@@ -88,7 +96,7 @@ export default function Licensing() {
                 <label htmlFor="projectDetails" className="block text-xs font-sans tracking-[0.1em] text-muted-foreground uppercase mb-2">Project Details & Track Needs</label>
                 <textarea required id="projectDetails" name="projectDetails" rows={4} className="w-full bg-background border border-border/50 px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors resize-none"></textarea>
               </div>
-              <button type="submit" className="w-full bg-foreground text-background py-4 text-xs font-sans tracking-[0.2em] uppercase hover:bg-primary transition-colors" data-testid="button-submit-enquiry">
+              <button type="submit" className="w-full bg-foreground text-background py-4 text-xs font-sans tracking-[0.2em] uppercase hover:bg-primary transition-colors">
                 Submit Enquiry
               </button>
             </form>
