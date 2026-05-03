@@ -27,13 +27,59 @@ export interface SubmitUnlockInput {
 }
 
 // ---------------------------------------------------------------------------
+// Record normalizer — makes every record safe to render regardless of shape
+// ---------------------------------------------------------------------------
+
+/**
+ * Accepts any unknown value from the API or localStorage and returns a fully
+ * populated UnlockRecord (with fallbacks for every field) or null if the raw
+ * value is not an object at all.
+ */
+function normalizeRecord(
+  raw: unknown,
+  defaultSource: "api" | "local"
+): UnlockRecord | null {
+  try {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    const r = raw as Record<string, unknown>;
+    return {
+      id: r.id != null ? String(r.id) : `gen-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      trackId: r.trackId != null ? String(r.trackId) : "unknown",
+      trackTitle: r.trackTitle != null ? String(r.trackTitle) : "Unknown track",
+      name: r.name != null ? String(r.name) : "Unknown",
+      email: r.email != null ? String(r.email) : "No email",
+      intendedUse: r.intendedUse != null ? String(r.intendedUse) : "Not specified",
+      termsAccepted: Boolean(r.termsAccepted),
+      timestamp:
+        r.timestamp != null
+          ? String(r.timestamp)
+          : new Date().toISOString(),
+      userAgent: r.userAgent != null ? String(r.userAgent) : undefined,
+      source:
+        r.source === "api" || r.source === "local"
+          ? r.source
+          : defaultSource,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function normalizeArray(
+  raw: unknown,
+  defaultSource: "api" | "local"
+): UnlockRecord[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => normalizeRecord(item, defaultSource))
+    .filter((r): r is UnlockRecord => r !== null);
+}
+
+// ---------------------------------------------------------------------------
 // Local storage helpers
 // ---------------------------------------------------------------------------
 
-/** Key that stores per-track unlock state (keyed by trackId). */
 const ACCESS_KEY = "ca_track_access";
-
-/** Key that stores the full submission log for admin view. */
 const LOG_KEY = "ca_unlock_log";
 
 function getLocalAccessMap(): Record<string, boolean> {
@@ -48,49 +94,47 @@ function getLocalAccessMap(): Record<string, boolean> {
 function getLocalLog(): UnlockRecord[] {
   try {
     const raw = localStorage.getItem(LOG_KEY);
-    return raw ? (JSON.parse(raw) as UnlockRecord[]) : [];
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    return normalizeArray(parsed, "local");
   } catch {
     return [];
   }
 }
 
 function appendToLocalLog(record: UnlockRecord): void {
-  const log = getLocalLog();
-  // Replace if same trackId already exists (re-unlock), otherwise append.
-  const idx = log.findIndex((r) => r.trackId === record.trackId);
-  if (idx >= 0) {
-    log[idx] = record;
-  } else {
-    log.push(record);
+  try {
+    const log = getLocalLog();
+    const idx = log.findIndex((r) => r.trackId === record.trackId);
+    if (idx >= 0) {
+      log[idx] = record;
+    } else {
+      log.push(record);
+    }
+    localStorage.setItem(LOG_KEY, JSON.stringify(log));
+  } catch {
+    // localStorage may be full or unavailable — silently ignore
   }
-  localStorage.setItem(LOG_KEY, JSON.stringify(log));
 }
 
 function markLocallyUnlocked(trackId: string): void {
-  const map = getLocalAccessMap();
-  map[trackId] = true;
-  localStorage.setItem(ACCESS_KEY, JSON.stringify(map));
+  try {
+    const map = getLocalAccessMap();
+    map[trackId] = true;
+    localStorage.setItem(ACCESS_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-/** Check whether the visitor has already unlocked a track (local cache). */
 export function isTrackUnlocked(trackId: string): boolean {
   return !!getLocalAccessMap()[trackId];
 }
 
-/**
- * Submit an unlock request.
- *
- * 1. Tries to POST to the Cloudflare Worker (/api/unlock).
- * 2. On success, caches the granted state locally.
- * 3. If the Worker is unavailable (IS_MOCK_MODE or network error), falls
- *    back to localStorage-only storage.
- *
- * Always returns { success: true } — access is never blocked by backend errors.
- */
 export async function submitUnlock(
   input: SubmitUnlockInput
 ): Promise<{ success: boolean; source: "api" | "local" }> {
@@ -118,11 +162,10 @@ export async function submitUnlock(
         return { success: true, source: "api" };
       }
     } catch {
-      // Network error or timeout — fall through to local storage
+      // Network error or timeout — fall through
     }
   }
 
-  // Mock / fallback path
   record.source = "local";
   markLocallyUnlocked(input.trackId);
   appendToLocalLog(record);
@@ -138,7 +181,12 @@ export async function submitUnlock(
 /**
  * Fetch all unlock submissions for the admin view.
  *
- * Tries the Worker API first; merges with local log as fallback.
+ * Handles both response shapes:
+ *   { ok: true, records: [...] }   ← canonical Worker shape
+ *   [...]                          ← raw array fallback
+ *
+ * Every record is normalized through normalizeRecord so all fields are safe
+ * to render, regardless of what the Worker or localStorage contains.
  */
 export async function fetchSubmissions(): Promise<{
   records: UnlockRecord[];
@@ -147,27 +195,52 @@ export async function fetchSubmissions(): Promise<{
   if (!IS_MOCK_MODE) {
     try {
       const res = await fetch(`${API_BASE}/api/unlock`, {
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(8000),
       });
       if (res.ok) {
-        const records = (await res.json()) as UnlockRecord[];
+        const payload: unknown = await res.json();
+
+        let rawArray: unknown;
+        if (Array.isArray(payload)) {
+          rawArray = payload;
+        } else if (
+          payload !== null &&
+          typeof payload === "object" &&
+          "records" in payload
+        ) {
+          rawArray = (payload as { records: unknown }).records;
+        } else {
+          console.warn("[Conduct Alchemy] Unexpected /api/unlock shape:", payload);
+          rawArray = [];
+        }
+
+        const records = normalizeArray(rawArray, "api");
+        console.log(
+          `[Conduct Alchemy] Fetched ${records.length} record(s) from Worker.`
+        );
         return { records, source: "api" };
       }
-    } catch {
-      // fall through
+      console.warn(
+        `[Conduct Alchemy] Worker returned ${res.status} — using local fallback`
+      );
+    } catch (err) {
+      console.warn("[Conduct Alchemy] Worker fetch error — using local fallback:", err);
     }
   }
+
   return { records: getLocalLog(), source: "local" };
 }
 
-/** Return locally cached submissions without a network call. */
 export function getLocalSubmissions(): UnlockRecord[] {
   return getLocalLog();
 }
 
-/** Revoke local access (useful for testing). */
 export function revokeLocalAccess(trackId: string): void {
-  const map = getLocalAccessMap();
-  delete map[trackId];
-  localStorage.setItem(ACCESS_KEY, JSON.stringify(map));
+  try {
+    const map = getLocalAccessMap();
+    delete map[trackId];
+    localStorage.setItem(ACCESS_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
 }

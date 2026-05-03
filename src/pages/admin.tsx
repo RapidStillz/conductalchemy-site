@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Component, type ReactNode } from "react";
 import {
   Track,
   SiteContent,
@@ -16,6 +16,61 @@ import {
   revokeLocalAccess,
 } from "@/lib/access";
 import { IS_MOCK_MODE } from "@/lib/api-config";
+
+// ---------------------------------------------------------------------------
+// Error Boundary — catches render crashes in the Access Log tab so the rest
+// of the admin page keeps working.
+// ---------------------------------------------------------------------------
+
+interface EBState { hasError: boolean; message: string }
+
+class AccessLogErrorBoundary extends Component<
+  { children: ReactNode },
+  EBState
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, message: "" };
+  }
+
+  static getDerivedStateFromError(error: unknown): EBState {
+    const message =
+      error instanceof Error ? error.message : String(error);
+    return { hasError: true, message };
+  }
+
+  componentDidCatch(error: unknown, info: unknown) {
+    console.error("[Access Log] Render error caught by boundary:", error, info);
+  }
+
+  handleReset = () => this.setState({ hasError: false, message: "" });
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="border border-red-500/30 bg-red-500/5 px-6 py-10 text-center">
+          <p className="text-sm font-serif text-red-400 mb-2">
+            The Access Log encountered a display error.
+          </p>
+          <p className="text-[10px] font-mono text-red-400/60 mb-6 max-w-lg mx-auto break-all">
+            {this.state.message}
+          </p>
+          <button
+            onClick={this.handleReset}
+            className="text-xs uppercase tracking-widest border border-red-500/40 text-red-400 px-4 py-2 hover:bg-red-500/10 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 type AdminTab = "catalogue" | "content" | "access-log";
 
@@ -44,9 +99,13 @@ const ACCESS_STATUS_COLORS: Record<AccessStatus, string> = {
   "NDA / Token Access Required": "text-red-400 border-red-400/30 bg-red-400/5",
 };
 
-function formatDate(ts: string): string {
+/** Always returns a non-empty string — never undefined, never throws. */
+function safeFormatDate(ts: unknown): string {
   try {
-    return new Date(ts).toLocaleString("en-GB", {
+    if (ts == null || ts === "") return "No date";
+    const d = new Date(String(ts));
+    if (isNaN(d.getTime())) return String(ts);
+    return d.toLocaleString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -54,46 +113,137 @@ function formatDate(ts: string): string {
       minute: "2-digit",
     });
   } catch {
-    return ts;
+    return String(ts ?? "No date");
   }
 }
 
 function exportCsv(records: UnlockRecord[]) {
-  const headers = [
-    "ID",
-    "Track ID",
-    "Track Title",
-    "Name",
-    "Email",
-    "Intended Use",
-    "Terms Accepted",
-    "Timestamp",
-    "Source",
-    "User Agent",
-  ];
-  const rows = records.map((r) =>
-    [
-      r.id,
-      r.trackId,
-      `"${r.trackTitle.replace(/"/g, '""')}"`,
-      `"${r.name.replace(/"/g, '""')}"`,
-      r.email,
-      r.intendedUse,
-      r.termsAccepted ? "Yes" : "No",
-      r.timestamp,
-      r.source,
-      `"${(r.userAgent ?? "").replace(/"/g, '""')}"`,
-    ].join(",")
-  );
-  const csv = [headers.join(","), ...rows].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `ca-unlock-submissions-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  try {
+    const headers = [
+      "ID", "Track ID", "Track Title", "Name", "Email",
+      "Intended Use", "Terms Accepted", "Timestamp", "Source", "User Agent",
+    ];
+    const esc = (v: unknown) =>
+      `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = records.map((r) =>
+      [
+        esc(r.id),
+        esc(r.trackId),
+        esc(r.trackTitle),
+        esc(r.name),
+        esc(r.email),
+        esc(r.intendedUse),
+        r.termsAccepted ? "Yes" : "No",
+        esc(r.timestamp),
+        esc(r.source),
+        esc(r.userAgent),
+      ].join(",")
+    );
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ca-unlock-submissions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error("[Admin] CSV export failed:", e);
+  }
 }
+
+// ---------------------------------------------------------------------------
+// Safe record row — individual row errors don't crash the whole table
+// ---------------------------------------------------------------------------
+
+function RecordRow({
+  rec,
+  onRevoke,
+}: {
+  rec: UnlockRecord;
+  onRevoke: (r: UnlockRecord) => void;
+}) {
+  try {
+    const rowKey =
+      rec.id ||
+      `${String(rec.trackId ?? "")}-${String(rec.timestamp ?? Date.now())}`;
+    const source = rec.source === "api" || rec.source === "local"
+      ? rec.source
+      : "api";
+
+    return (
+      <tr
+        key={rowKey}
+        className="border-b border-border/20 hover:bg-card/10 transition-colors"
+      >
+        <td className="px-5 py-4">
+          <div className="font-serif text-sm leading-tight">
+            {String(rec.trackTitle || "Unknown track")}
+          </div>
+          <div className="text-[9px] text-muted-foreground tracking-widest mt-0.5">
+            ID {String(rec.trackId || "—")}
+          </div>
+        </td>
+        <td className="px-5 py-4 font-sans text-sm">
+          {String(rec.name || "Unknown")}
+        </td>
+        <td className="px-5 py-4 font-sans text-xs text-muted-foreground">
+          {String(rec.email || "No email")}
+        </td>
+        <td className="px-5 py-4">
+          <span className="text-[9px] uppercase tracking-widest border border-border/40 px-2 py-1 text-muted-foreground">
+            {String(rec.intendedUse || "Not specified")}
+          </span>
+        </td>
+        <td className="px-5 py-4">
+          {rec.termsAccepted ? (
+            <span className="text-green-400 text-[10px]">✓ Yes</span>
+          ) : (
+            <span className="text-muted-foreground text-[10px]">—</span>
+          )}
+        </td>
+        <td className="px-5 py-4 text-xs text-muted-foreground whitespace-nowrap">
+          {safeFormatDate(rec.timestamp)}
+        </td>
+        <td className="px-5 py-4">
+          <span
+            className={`text-[9px] uppercase tracking-widest border px-2 py-1 ${
+              source === "api"
+                ? "text-green-400 border-green-400/30 bg-green-400/5"
+                : "text-amber-400 border-amber-400/30 bg-amber-400/5"
+            }`}
+          >
+            {source}
+          </span>
+        </td>
+        <td className="px-5 py-4 text-right">
+          <button
+            onClick={() => onRevoke(rec)}
+            className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive transition-colors"
+          >
+            Revoke
+          </button>
+        </td>
+      </tr>
+    );
+  } catch (e) {
+    console.error("[Admin] Error rendering record row:", e, rec);
+    return (
+      <tr className="border-b border-border/20">
+        <td
+          colSpan={8}
+          className="px-5 py-3 text-[10px] font-mono text-red-400/60"
+        >
+          Malformed record — could not display (id: {String(rec?.id ?? "?")})
+        </td>
+      </tr>
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main Admin component
+// ---------------------------------------------------------------------------
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState<AdminTab>("catalogue");
@@ -112,8 +262,8 @@ export default function Admin() {
   useEffect(() => {
     setTracks(getTracks());
     setContent(getSiteContent());
-    // Pre-load local submissions immediately; API submissions load on tab open
-    setSubmissions(getLocalSubmissions());
+    // Do NOT pre-set submissions here — loadSubmissions handles it on tab open,
+    // and pre-setting stale local data can race with the API response.
   }, []);
 
   const loadSubmissions = useCallback(async () => {
@@ -121,14 +271,15 @@ export default function Admin() {
     setSubmissionsError(null);
     try {
       const result = await fetchSubmissions();
-      // Always guard — ensure we never set a non-array into submissions
-      const safe = Array.isArray(result.records) ? result.records : [];
-      setSubmissions(safe);
+      // fetchSubmissions normalizes every record, so result.records is always
+      // a safe UnlockRecord[]. The Array.isArray guard is belt-and-suspenders.
+      setSubmissions(Array.isArray(result.records) ? result.records : []);
       setSubmissionsSource(result.source);
     } catch (e) {
-      console.error("[Admin] loadSubmissions threw:", e);
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[Admin] loadSubmissions threw:", msg);
       setSubmissionsError(
-        "Could not load submissions. Falling back to locally stored records."
+        "Failed to load submissions. Showing locally stored records."
       );
       setSubmissions(getLocalSubmissions());
       setSubmissionsSource("local");
@@ -250,6 +401,16 @@ export default function Admin() {
     e.target.value = "";
   };
 
+  // -------------------------------------------------------------------------
+  // Access log helpers
+  // -------------------------------------------------------------------------
+  const handleRevoke = (rec: UnlockRecord) => {
+    if (confirm(`Revoke local access for "${rec.trackTitle}"?`)) {
+      revokeLocalAccess(rec.trackId);
+      loadSubmissions();
+    }
+  };
+
   if (!siteContent) return null;
 
   const inputCls =
@@ -359,23 +520,12 @@ export default function Admin() {
                 </div>
 
                 <div>
-                  <label className={labelCls}>Audio URL (optional — for playback)</label>
-                  <input
-                    name="audioUrl"
-                    defaultValue={editingTrack.audioUrl || ""}
-                    className={inputCls}
-                    placeholder="https://example.com/track.mp3"
-                  />
+                  <label className={labelCls}>Audio URL (optional)</label>
+                  <input name="audioUrl" defaultValue={editingTrack.audioUrl || ""} className={inputCls} placeholder="https://example.com/track.mp3" />
                 </div>
 
                 <div className="flex items-center gap-3 pt-1">
-                  <input
-                    type="checkbox"
-                    id="featured"
-                    name="featured"
-                    defaultChecked={editingTrack.featured}
-                    className="w-4 h-4 accent-primary"
-                  />
+                  <input type="checkbox" id="featured" name="featured" defaultChecked={editingTrack.featured} className="w-4 h-4 accent-primary" />
                   <label htmlFor="featured" className="text-xs font-sans tracking-widest uppercase text-muted-foreground cursor-pointer">
                     Featured on Homepage
                   </label>
@@ -558,171 +708,128 @@ export default function Admin() {
       {/* TAB: ACCESS LOG                                                       */}
       {/* ------------------------------------------------------------------ */}
       {activeTab === "access-log" && (
-        <div>
-          {/* Header row */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div>
-              <h2 className="text-2xl font-serif">Access Log</h2>
-              <p className="text-xs text-muted-foreground mt-1 font-sans tracking-wide">
-                Private track unlock submissions.{" "}
-                {loadingSubmissions ? (
-                  <span className="text-muted-foreground/60">Checking…</span>
-                ) : IS_MOCK_MODE ? (
-                  <span className="text-amber-400/70">
-                    Mock mode — data stored locally. Set{" "}
-                    <code className="font-mono text-[10px]">VITE_WORKER_URL</code> to connect the Worker.
-                  </span>
-                ) : submissionsSource === "api" ? (
-                  <span className="text-green-400/70">Live — data from Cloudflare Worker.</span>
-                ) : submissionsSource === "local" ? (
-                  <span className="text-amber-400/70">Worker unreachable — showing local fallback data.</span>
-                ) : null}
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={loadSubmissions}
-                disabled={loadingSubmissions}
-                className="text-xs tracking-widest uppercase border border-border/60 px-4 py-2 hover:bg-border/30 transition-colors disabled:opacity-40"
-              >
-                {loadingSubmissions ? "Loading…" : "Refresh"}
-              </button>
-              {submissions.length > 0 && (
-                <button
-                  onClick={() => exportCsv(submissions)}
-                  className="text-xs tracking-widest uppercase border border-primary/50 text-primary px-4 py-2 hover:bg-primary hover:text-primary-foreground transition-colors"
-                >
-                  Export CSV
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Error banner */}
-          {submissionsError && (
-            <div className="mb-6 border border-red-500/30 bg-red-500/5 px-5 py-4 flex items-start gap-3">
-              <span className="text-red-400 text-xs mt-0.5">⚠</span>
-              <p className="text-xs font-sans text-red-400/90 leading-relaxed">
-                {submissionsError}
-              </p>
-            </div>
-          )}
-
-          {/* Loading skeleton */}
-          {loadingSubmissions && submissions.length === 0 && (
-            <div className="border border-border/40 px-6 py-16 text-center">
-              <p className="text-xs font-sans tracking-widest uppercase text-muted-foreground animate-pulse">
-                Loading submissions…
-              </p>
-            </div>
-          )}
-
-          {/* Empty state (not loading, no error, no records) */}
-          {!loadingSubmissions && submissions.length === 0 && !submissionsError && (
-            <div className="border border-border/40 px-6 py-16 text-center">
-              <p className="text-muted-foreground italic font-serif text-sm">
-                No unlock submissions yet.
-              </p>
-              <p className="text-[10px] font-sans tracking-widest uppercase text-muted-foreground/50 mt-2">
-                Submissions appear here once a visitor unlocks a private track.
-              </p>
-            </div>
-          )}
-
-          {/* Table — only render when we have records */}
-          {submissions.length > 0 && (
-            <>
-              {/* Summary chips */}
-              <div className="flex flex-wrap gap-4 mb-6 text-[10px] font-sans tracking-widest uppercase">
-                <span className="text-muted-foreground">
-                  Total: <span className="text-foreground">{submissions.length}</span>
-                </span>
-                {["Film", "TV", "Advertising", "Game", "Personal", "Other"].map((use) => {
-                  const count = submissions.filter((r) => r.intendedUse === use).length;
-                  if (!count) return null;
-                  return (
-                    <span key={use} className="text-muted-foreground">
-                      {use}: <span className="text-foreground">{count}</span>
+        <AccessLogErrorBoundary>
+          <div>
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <div>
+                <h2 className="text-2xl font-serif">Access Log</h2>
+                <p className="text-xs text-muted-foreground mt-1 font-sans tracking-wide">
+                  Private track unlock submissions.{" "}
+                  {loadingSubmissions ? (
+                    <span className="text-muted-foreground/50">Checking…</span>
+                  ) : IS_MOCK_MODE ? (
+                    <span className="text-amber-400/70">
+                      Mock mode — data stored locally. Set{" "}
+                      <code className="font-mono text-[10px]">VITE_WORKER_URL</code> to connect the Worker.
                     </span>
-                  );
-                })}
+                  ) : submissionsSource === "api" ? (
+                    <span className="text-green-400/70">Live — data from Cloudflare Worker.</span>
+                  ) : submissionsSource === "local" ? (
+                    <span className="text-amber-400/70">Worker unreachable — showing local fallback.</span>
+                  ) : null}
+                </p>
               </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={loadSubmissions}
+                  disabled={loadingSubmissions}
+                  className="text-xs tracking-widest uppercase border border-border/60 px-4 py-2 hover:bg-border/30 transition-colors disabled:opacity-40"
+                >
+                  {loadingSubmissions ? "Loading…" : "Refresh"}
+                </button>
+                {submissions.length > 0 && (
+                  <button
+                    onClick={() => exportCsv(submissions)}
+                    className="text-xs tracking-widest uppercase border border-primary/50 text-primary px-4 py-2 hover:bg-primary hover:text-primary-foreground transition-colors"
+                  >
+                    Export CSV
+                  </button>
+                )}
+              </div>
+            </div>
 
-              <div className="overflow-x-auto border border-border/40">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-[10px] text-muted-foreground uppercase bg-card/30 border-b border-border/40">
-                    <tr>
-                      <th className="px-5 py-4 font-normal tracking-widest">Track</th>
-                      <th className="px-5 py-4 font-normal tracking-widest">Name</th>
-                      <th className="px-5 py-4 font-normal tracking-widest">Email</th>
-                      <th className="px-5 py-4 font-normal tracking-widest">Use</th>
-                      <th className="px-5 py-4 font-normal tracking-widest">Terms</th>
-                      <th className="px-5 py-4 font-normal tracking-widest">Date</th>
-                      <th className="px-5 py-4 font-normal tracking-widest">Source</th>
-                      <th className="px-5 py-4 font-normal tracking-widest text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {submissions.map((rec) => (
-                      <tr
-                        key={rec.id ?? `${rec.trackId}-${rec.timestamp}`}
-                        className="border-b border-border/20 hover:bg-card/10 transition-colors"
-                      >
-                        <td className="px-5 py-4">
-                          <div className="font-serif text-sm leading-tight">
-                            {rec.trackTitle ?? "—"}
-                          </div>
-                          <div className="text-[9px] text-muted-foreground tracking-widest mt-0.5">
-                            ID {rec.trackId}
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 font-sans text-sm">{rec.name}</td>
-                        <td className="px-5 py-4 font-sans text-xs text-muted-foreground">{rec.email}</td>
-                        <td className="px-5 py-4">
-                          <span className="text-[9px] uppercase tracking-widest border border-border/40 px-2 py-1 text-muted-foreground">
-                            {rec.intendedUse}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
-                          {rec.termsAccepted
-                            ? <span className="text-green-400 text-[10px]">✓ Yes</span>
-                            : <span className="text-muted-foreground text-[10px]">—</span>}
-                        </td>
-                        <td className="px-5 py-4 text-xs text-muted-foreground whitespace-nowrap">
-                          {formatDate(rec.timestamp)}
-                        </td>
-                        <td className="px-5 py-4">
-                          <span
-                            className={`text-[9px] uppercase tracking-widest border px-2 py-1 ${
-                              rec.source === "api"
-                                ? "text-green-400 border-green-400/30 bg-green-400/5"
-                                : "text-amber-400 border-amber-400/30 bg-amber-400/5"
-                            }`}
-                          >
-                            {rec.source ?? "local"}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-right">
-                          <button
-                            onClick={() => {
-                              if (confirm(`Revoke local access for "${rec.trackTitle}"?`)) {
-                                revokeLocalAccess(rec.trackId);
-                                loadSubmissions();
-                              }
-                            }}
-                            className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive transition-colors"
-                          >
-                            Revoke
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {/* Error banner */}
+            {submissionsError && (
+              <div className="mb-6 border border-red-500/30 bg-red-500/5 px-5 py-4 flex items-start gap-3">
+                <span className="text-red-400 text-sm">⚠</span>
+                <p className="text-xs font-sans text-red-400/90 leading-relaxed">
+                  {submissionsError}
+                </p>
               </div>
-            </>
-          )}
-        </div>
+            )}
+
+            {/* Loading — no records yet */}
+            {loadingSubmissions && submissions.length === 0 && (
+              <div className="border border-border/40 px-6 py-16 text-center">
+                <p className="text-xs font-sans tracking-widest uppercase text-muted-foreground animate-pulse">
+                  Loading submissions…
+                </p>
+              </div>
+            )}
+
+            {/* Empty — done loading, no records, no error */}
+            {!loadingSubmissions && submissions.length === 0 && !submissionsError && (
+              <div className="border border-border/40 px-6 py-16 text-center">
+                <p className="text-muted-foreground italic font-serif text-sm">
+                  No unlock submissions yet.
+                </p>
+                <p className="text-[10px] font-sans tracking-widest uppercase text-muted-foreground/40 mt-2">
+                  Submissions appear here once a visitor unlocks a private track.
+                </p>
+              </div>
+            )}
+
+            {/* Records table */}
+            {submissions.length > 0 && (
+              <>
+                {/* Summary chips */}
+                <div className="flex flex-wrap gap-4 mb-6 text-[10px] font-sans tracking-widest uppercase">
+                  <span className="text-muted-foreground">
+                    Total: <span className="text-foreground">{submissions.length}</span>
+                  </span>
+                  {["Film", "TV", "Advertising", "Game", "Personal", "Other"].map((use) => {
+                    const count = submissions.filter(
+                      (r) => String(r.intendedUse || "") === use
+                    ).length;
+                    if (!count) return null;
+                    return (
+                      <span key={use} className="text-muted-foreground">
+                        {use}: <span className="text-foreground">{count}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+
+                <div className="overflow-x-auto border border-border/40">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-[10px] text-muted-foreground uppercase bg-card/30 border-b border-border/40">
+                      <tr>
+                        <th className="px-5 py-4 font-normal tracking-widest">Track</th>
+                        <th className="px-5 py-4 font-normal tracking-widest">Name</th>
+                        <th className="px-5 py-4 font-normal tracking-widest">Email</th>
+                        <th className="px-5 py-4 font-normal tracking-widest">Use</th>
+                        <th className="px-5 py-4 font-normal tracking-widest">Terms</th>
+                        <th className="px-5 py-4 font-normal tracking-widest">Date</th>
+                        <th className="px-5 py-4 font-normal tracking-widest">Source</th>
+                        <th className="px-5 py-4 font-normal tracking-widest text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {submissions.map((rec, idx) => (
+                        <RecordRow
+                          key={rec.id || `row-${idx}`}
+                          rec={rec}
+                          onRevoke={handleRevoke}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        </AccessLogErrorBoundary>
       )}
     </div>
   );
