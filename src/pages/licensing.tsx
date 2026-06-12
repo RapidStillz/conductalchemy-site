@@ -1,4 +1,4 @@
-import type { CSSProperties, FormEvent } from "react";
+import type { CSSProperties, FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 const API = "https://dark-voice-ab4b.rapidstillz.workers.dev";
@@ -97,7 +97,7 @@ function Eyebrow({ children }: { children: string }) {
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
     <article style={{ ...panel, padding: 24 }}>
       <h3 style={{ marginTop: 0 }}>{title}</h3>
