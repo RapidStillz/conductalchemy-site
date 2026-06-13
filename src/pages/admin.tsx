@@ -4,6 +4,7 @@ import {
   closestCorners,
   useDraggable,
   useDroppable,
+  type DragEndEvent,
 } from "@dnd-kit/core";
 
 const API = "https://dark-voice-ab4b.rapidstillz.workers.dev";
@@ -26,24 +27,21 @@ type Lead = {
 
 const STATUSES = ["NEW", "CONTACTED", "WON"];
 
-// 🔥 TRUE CONVERSION MODEL
 const getModel = (leads: Lead[]) => {
-  let total = leads.length;
+  const total = leads.length;
   let contacted = 0;
   let won = 0;
 
-  leads.forEach((l) => {
-    const history = l.history || [];
+  leads.forEach((lead) => {
+    const history = lead.history || [];
 
-    if (history.some((h) => h.status === "CONTACTED")) contacted++;
-    if (history.some((h) => h.status === "WON")) won++;
+    if (history.some((item) => item.status === "CONTACTED")) contacted++;
+    if (history.some((item) => item.status === "WON")) won++;
   });
 
   const newToContacted = total === 0 ? 0 : contacted / total;
   const contactedToWon = contacted === 0 ? 0 : won / contacted;
   const newToWon = newToContacted * contactedToWon;
-
-  // 🔥 CONFIDENCE
   const confidence = Math.min(1, total / 20);
 
   return {
@@ -54,8 +52,7 @@ const getModel = (leads: Lead[]) => {
   };
 };
 
-// CARD
-function Card({ lead, onSelect }: any) {
+function Card({ lead, onSelect }: { lead: Lead; onSelect: (lead: Lead) => void }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: lead.id,
   });
@@ -67,9 +64,7 @@ function Card({ lead, onSelect }: any) {
       {...listeners}
       onMouseUp={() => onSelect(lead)}
       style={{
-        transform: transform
-          ? `translate(${transform.x}px, ${transform.y}px)`
-          : undefined,
+        transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
         background: "#1a1a1d",
         padding: 12,
         marginTop: 10,
@@ -83,15 +78,14 @@ function Card({ lead, onSelect }: any) {
   );
 }
 
-// COLUMN
-function Column({ status, leads, onSelect }: any) {
+function Column({ status, leads, onSelect }: { status: string; leads: Lead[]; onSelect: (lead: Lead) => void }) {
   const { setNodeRef } = useDroppable({ id: status });
 
   return (
     <div ref={setNodeRef} style={{ flex: 1, background: "#111", padding: 10 }}>
       <h3>{status}</h3>
-      {leads.map((l: Lead) => (
-        <Card key={l.id} lead={l} onSelect={onSelect} />
+      {leads.map((lead) => (
+        <Card key={lead.id} lead={lead} onSelect={onSelect} />
       ))}
     </div>
   );
@@ -102,35 +96,30 @@ export default function Admin() {
   const [selected, setSelected] = useState<Lead | null>(null);
   const [price, setPrice] = useState(1500);
 
-  // LOAD
   useEffect(() => {
     fetch(`${API}/leads`)
-      .then((r) => r.json())
+      .then((response) => response.json() as Promise<Lead[]>)
       .then((data) => {
-        // 🔥 BACKFILL HISTORY
-        const fixed = data.map((l: Lead) => {
-          if (!l.history) {
+        const fixed = data.map((lead) => {
+          if (!lead.history) {
             return {
-              ...l,
+              ...lead,
               history: [
                 {
                   status: "NEW",
-                  at: l.createdAt || Date.now(),
+                  at: lead.createdAt || Date.now(),
                 },
-                ...(l.status !== "NEW"
-                  ? [{ status: l.status, at: Date.now() }]
-                  : []),
+                ...(lead.status !== "NEW" ? [{ status: lead.status, at: Date.now() }] : []),
               ],
             };
           }
-          return l;
+          return lead;
         });
 
         setLeads(fixed);
       });
   }, []);
 
-  // SAVE VALUE
   const saveDealValue = async () => {
     if (!selected) return;
 
@@ -146,26 +135,17 @@ export default function Admin() {
       }),
     });
 
-    setLeads((prev) =>
-      prev.map((l) =>
-        l.id === selected.id ? { ...l, value: price } : l
-      )
-    );
+    setLeads((prev) => prev.map((lead) => (lead.id === selected.id ? { ...lead, value: price } : lead)));
   };
 
-  // DRAG
-  const handleDragEnd = async (event: any) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over) return;
 
-    const id = active.id;
-    const newStatus = over.id;
+    const id = String(active.id);
+    const newStatus = String(over.id);
 
-    setLeads((prev) =>
-      prev.map((l) =>
-        l.id === id ? { ...l, status: newStatus } : l
-      )
-    );
+    setLeads((prev) => prev.map((lead) => (lead.id === id ? { ...lead, status: newStatus } : lead)));
 
     await fetch(`${API}/update-status`, {
       method: "POST",
@@ -176,21 +156,16 @@ export default function Admin() {
 
   const model = getModel(leads);
 
-  const forecast = leads.reduce((sum, l) => {
-    if (!l.value) return sum;
-
-    if (l.status === "WON") return sum + l.value;
-    if (l.status === "CONTACTED")
-      return sum + l.value * model.contactedToWon;
-    if (l.status === "NEW")
-      return sum + l.value * model.newToWon;
-
+  const forecast = leads.reduce((sum, lead) => {
+    if (!lead.value) return sum;
+    if (lead.status === "WON") return sum + lead.value;
+    if (lead.status === "CONTACTED") return sum + lead.value * model.contactedToWon;
+    if (lead.status === "NEW") return sum + lead.value * model.newToWon;
     return sum;
   }, 0);
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "#0b0b0c", color: "#fff" }}>
-      
       <div style={{ flex: 3, padding: 20 }}>
         <h1>Conversion Intelligence</h1>
 
@@ -207,11 +182,11 @@ export default function Admin() {
 
         <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
           <div style={{ display: "flex", gap: 20 }}>
-            {STATUSES.map((s) => (
+            {STATUSES.map((status) => (
               <Column
-                key={s}
-                status={s}
-                leads={leads.filter((l) => l.status === s)}
+                key={status}
+                status={status}
+                leads={leads.filter((lead) => lead.status === status)}
                 onSelect={setSelected}
               />
             ))}
@@ -223,6 +198,12 @@ export default function Admin() {
         <div style={{ flex: 1, background: "#111", padding: 20 }}>
           <h2>{selected.name}</h2>
           <h2>£{price}</h2>
+          <input
+            type="number"
+            value={price}
+            onChange={(event) => setPrice(Number(event.target.value))}
+            style={{ marginBottom: 12, width: "100%" }}
+          />
           <button onClick={saveDealValue}>Save Deal Value</button>
         </div>
       )}
