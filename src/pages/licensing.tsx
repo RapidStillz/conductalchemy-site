@@ -1,4 +1,4 @@
-import type { CSSProperties, FormEvent } from "react";
+import type { FormEvent } from "react";
 import { useState } from "react";
 
 const API = "https://dark-voice-ab4b.rapidstillz.workers.dev";
@@ -17,81 +17,25 @@ const territories = ["UK", "Europe", "Worldwide", "To be confirmed"];
 const durations = ["Campaign period", "1 Year", "3 Years", "Perpetual / archive", "To be confirmed"];
 const paidMediaOptions = ["No / organic only", "Yes / paid media planned", "Unsure / to be confirmed"];
 
-const routes = [
-  ["Creator / online", "For YouTube, editorial video, reels and social content where the use is public but simple.", "Best for clear non-exclusive digital use."],
-  ["Brand / advertising", "For brand films, launches, paid social, digital advertising and agency campaign work.", "Scoped by platform, territory, campaign term and paid media."],
-  ["Film / TV / trailer", "For scenes, titles, promos, documentaries, scripted projects, trailers, broadcast, VOD and festival use.", "Scoped by media, territory, duration, release plan and versions needed."],
-  ["Custom / exclusive", "For bespoke edits, alternate lyrics, picture-specific versions, category restrictions or exclusivity.", "Handled as a direct creative and commercial conversation."],
+const pillars = [
+  ["Curated Excellence", "Handpicked music of the highest artistic and production quality."],
+  ["Story-first by Design", "Music that elevates narrative, emotion and cinematic intention."],
+  ["Clearance Confidence", "Global, worry-free licensing with transparent rights and terms."],
+  ["Alchemy of Sound", "We transform search into discovery. Signal into story."],
+];
+
+const useCases = [
+  ["Film & TV", "Feature films, series, documentaries and scripted visual work."],
+  ["Trailers & Promo", "High-impact music for trailers, teasers, launch films and promos."],
+  ["Brands & Agencies", "Distinctive sound for advertising, campaigns and branded stories."],
+  ["Digital & Social", "Music for creator content, social films and digital experiences."],
 ];
 
 const steps = [
-  ["01", "Tell us the use", "Share the project type, scene or campaign, platform, territory, duration and deadline.", "We identify the likely licence route."],
-  ["02", "We scope the route", "We review usage, rights, paid media, deliverables and whether exclusivity is relevant.", "You get the right path instead of vague pricing."],
-  ["03", "Agree terms first", "Licence scope is confirmed in writing before final masters, edits or stems are released.", "Clear permission and safe delivery."],
+  ["1", "Request access", "Tell us about your project and how you plan to use the music."],
+  ["2", "We listen & curate", "We review the brief and suggest the right route, track or version."],
+  ["3", "Explore & license", "Preview, agree scope and move forward with complete confidence."],
 ];
-
-const deliverables = [
-  "Full vocal master",
-  "Instrumental version",
-  "15s / 30s / 60s edits",
-  "Trailer cutdowns",
-  "Loopable sections",
-  "Lyric-light versions",
-  "Alternative mixes",
-  "Bespoke rework for picture",
-  "Usage letter / licence confirmation",
-];
-
-const faqs = [
-  ["Can I use a track before terms are agreed?", "No. An enquiry or preview does not grant usage rights. Permission starts only when licence terms are confirmed in writing."],
-  ["Why is there no fixed price list?", "Music value changes by project type, media, territory, term, campaign size, paid media, exclusivity and deliverables."],
-  ["Can I request an instrumental or custom edit?", "Yes. Instrumentals, cutdowns, lyric-light versions and bespoke edits may be available after the intended use has been reviewed."],
-  ["Can this support pitches or early development?", "Yes. Tell us whether the use is internal, pitch-stage, public, paid, broadcast or client-facing so the right access route can be advised."],
-];
-
-const page: CSSProperties = {
-  minHeight: "100vh",
-  background:
-    "radial-gradient(circle at 12% 0%, rgba(190,145,70,.22), transparent 34rem), radial-gradient(circle at 86% 30%, rgba(116,70,31,.18), transparent 30rem), linear-gradient(145deg,#050403 0%,#0b0706 44%,#120d0b 100%)",
-  color: "#f6ead8",
-  fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-};
-
-const shell: CSSProperties = { width: "min(1160px, calc(100% - 32px))", margin: "0 auto" };
-const card: CSSProperties = {
-  background: "linear-gradient(150deg, rgba(255,244,224,.09), rgba(255,255,255,.032))",
-  border: "1px solid rgba(231,184,105,.2)",
-  borderRadius: 24,
-  boxShadow: "0 28px 90px rgba(0,0,0,.34)",
-};
-const panel: CSSProperties = { background: "rgba(255,244,224,.055)", border: "1px solid rgba(231,184,105,.14)", borderRadius: 20 };
-const inputStyle: CSSProperties = {
-  width: "100%",
-  boxSizing: "border-box",
-  border: "1px solid rgba(231,184,105,.22)",
-  borderRadius: 14,
-  padding: "13px 14px",
-  background: "rgba(3,3,4,.72)",
-  color: "#fff7ec",
-  fontSize: 14,
-  outline: "none",
-};
-const labelStyle: CSSProperties = { display: "grid", gap: 7, color: "#e8d9c2", fontSize: 13, fontWeight: 750 };
-const pill: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  borderRadius: 999,
-  border: "1px solid rgba(231,184,105,.22)",
-  background: "rgba(232,189,114,.08)",
-  color: "#f2d69f",
-  padding: "8px 11px",
-  fontSize: 12,
-  fontWeight: 850,
-};
-
-function Eyebrow({ children }: { children: string }) {
-  return <p style={{ color: "#d9aa58", letterSpacing: 2.35, textTransform: "uppercase", fontSize: 11, fontWeight: 900, margin: 0 }}>{children}</p>;
-}
 
 function usageFrom(projectType: string) {
   if (projectType.includes("Advertising")) return "Ads";
@@ -102,7 +46,20 @@ function usageFrom(projectType: string) {
   return "Film";
 }
 
+function LogoMark() {
+  return (
+    <span className="ca-mark" aria-hidden="true">
+      <i />
+      <i />
+      <i />
+      <i />
+      <i />
+    </span>
+  );
+}
+
 export default function Licensing() {
+  const [artifactMode, setArtifactMode] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
@@ -122,11 +79,14 @@ export default function Licensing() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
+
     if (!name.trim() || !email.trim()) {
       setError("Please add your name and email so we can respond to the enquiry.");
       return;
     }
+
     setSubmitting(true);
+
     try {
       const response = await fetch(`${API}/submit`, {
         method: "POST",
@@ -150,6 +110,7 @@ export default function Licensing() {
           exclusive,
         }),
       });
+
       if (!response.ok) throw new Error("Lead submission failed");
       setSubmitted(true);
     } catch {
@@ -159,112 +120,194 @@ export default function Licensing() {
     }
   };
 
-  if (submitted) {
-    return (
-      <main style={page}>
-        <div style={{ ...shell, padding: "88px 0" }}>
-          <div style={{ ...card, padding: "clamp(28px,6vw,56px)" }}>
-            <Eyebrow>Conduct Alchemy Licensing</Eyebrow>
-            <h1 style={{ margin: "14px 0", fontSize: "clamp(2.4rem,7vw,5rem)", lineHeight: .96, letterSpacing: "-.06em" }}>Clearance request received.</h1>
-            <p style={{ maxWidth: 720, color: "#decfb8", fontSize: 18, lineHeight: 1.7 }}>Thank you. We’ll review the project context, intended use and clearance route before responding with the most suitable next step.</p>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <main style={page}>
-      <section style={{ padding: "28px 0 34px" }}>
-        <div style={shell}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 28, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div aria-hidden="true" style={{ width: 42, height: 42, borderRadius: "50%", display: "grid", placeItems: "center", border: "1px solid rgba(231,184,105,.46)", color: "#e8bd72", fontWeight: 950, background: "rgba(232,189,114,.08)" }}>CA</div>
-              <div><div style={{ color: "#f4e4ca", fontWeight: 900 }}>Conduct Alchemy</div><div style={{ color: "#a8987f", fontSize: 12 }}>Music licensing & clearance</div></div>
-            </div>
-            <a href="#clearance-request" style={{ color: "#0b0705", background: "#e8bd72", padding: "11px 16px", borderRadius: 999, fontWeight: 950, textDecoration: "none", fontSize: 13 }}>Request clearance</a>
-          </div>
+    <main className={artifactMode ? "ca-page artifact" : "ca-page dark"}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+        .ca-page {
+          --black:#050505; --charcoal:#1F2120; --slate:#70736F; --warm:#A2A39E;
+          --paper:#EDE9E3; --white:#F7F5F0; --amber:#D4A24A;
+          min-height:100vh; font-family:'IBM Plex Sans', Inter, system-ui, sans-serif;
+          transition:background .35s ease,color .35s ease;
+        }
+        .ca-page.dark { background:radial-gradient(circle at 75% 12%,rgba(212,162,74,.15),transparent 30rem),linear-gradient(135deg,#050505,#111312 58%,#050505); color:var(--paper); }
+        .ca-page.artifact { background:linear-gradient(180deg,#F7F5F0,#EDE9E3); color:#151515; }
+        .ca-shell { width:min(1160px,calc(100% - 40px)); margin:0 auto; }
+        .ca-header { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:28px 0; border-bottom:1px solid color-mix(in srgb,currentColor 14%,transparent); }
+        .ca-brand { display:flex; align-items:center; gap:13px; color:inherit; text-decoration:none; }
+        .ca-mark { width:42px; height:38px; display:inline-flex; align-items:center; justify-content:center; gap:5px; }
+        .ca-mark i { display:block; width:5px; border-radius:999px; background:currentColor; opacity:.96; }
+        .ca-mark i:nth-child(1), .ca-mark i:nth-child(5) { height:12px; }
+        .ca-mark i:nth-child(2), .ca-mark i:nth-child(4) { height:24px; }
+        .ca-mark i:nth-child(3) { height:36px; }
+        .ca-word { font-family:'Cormorant Garamond', Georgia, serif; font-size:26px; line-height:1; letter-spacing:.01em; }
+        .ca-nav { display:flex; gap:28px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+        .ca-nav a, .mode-button { color:inherit; text-decoration:none; text-transform:uppercase; letter-spacing:.18em; font-size:11px; font-weight:700; background:none; border:0; cursor:pointer; }
+        .mode-button { border:1px solid color-mix(in srgb,currentColor 28%,transparent); padding:12px 16px; }
+        .ca-hero { display:grid; grid-template-columns:minmax(0,1.03fr) minmax(320px,.72fr); gap:52px; align-items:center; padding:68px 0 56px; }
+        .eyebrow { text-transform:uppercase; letter-spacing:.22em; font-size:12px; color:var(--amber); font-weight:700; margin:0 0 24px; }
+        h1,h2,h3 { font-family:'Cormorant Garamond', Georgia, serif; font-weight:500; letter-spacing:-.025em; }
+        h1 { font-size:clamp(4rem,8vw,7.6rem); line-height:.9; margin:0 0 24px; max-width:840px; }
+        h2 { font-size:clamp(2.5rem,4.8vw,4.8rem); line-height:.95; margin:0; }
+        h3 { font-size:28px; line-height:1; margin:0 0 10px; }
+        .lead { max-width:650px; font-size:18px; line-height:1.75; color:color-mix(in srgb,currentColor 76%,transparent); }
+        .actions { display:flex; gap:14px; flex-wrap:wrap; margin-top:32px; }
+        .btn { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; text-transform:uppercase; letter-spacing:.14em; font-size:12px; font-weight:800; padding:16px 22px; border:1px solid currentColor; }
+        .btn.primary { background:var(--amber); color:#050505; border-color:var(--amber); }
+        .hero-object { min-height:390px; border:1px solid color-mix(in srgb,currentColor 16%,transparent); position:relative; overflow:hidden; display:grid; place-items:center; background:color-mix(in srgb,currentColor 4%,transparent); }
+        .hero-object:before { content:""; position:absolute; inset:15%; border-radius:999px; background:radial-gradient(circle,rgba(212,162,74,.16),transparent 62%); filter:blur(4px); }
+        .monolith { width:min(250px,58%); aspect-ratio:1/.86; border:1px solid color-mix(in srgb,currentColor 22%,transparent); background:linear-gradient(135deg,rgba(255,255,255,.1),rgba(0,0,0,.22)); display:grid; place-items:center; box-shadow:0 40px 90px rgba(0,0,0,.3); position:relative; }
+        .monolith .ca-mark { width:92px; height:86px; color:color-mix(in srgb,currentColor 88%,transparent); }
+        .section { padding:56px 0; border-top:1px solid color-mix(in srgb,currentColor 12%,transparent); }
+        .grid-4 { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; border:1px solid color-mix(in srgb,currentColor 14%,transparent); }
+        .pillar { padding:28px; border-right:1px solid color-mix(in srgb,currentColor 12%,transparent); }
+        .pillar:last-child { border-right:0; }
+        .pillar p, .case p, .step p, .note { color:color-mix(in srgb,currentColor 68%,transparent); line-height:1.62; margin:0; }
+        .cases { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; margin-top:28px; }
+        .case { min-height:165px; padding:24px; border:1px solid color-mix(in srgb,currentColor 14%,transparent); background:color-mix(in srgb,currentColor 4%,transparent); }
+        .process-form { display:grid; grid-template-columns:minmax(0,.9fr) minmax(340px,1fr); gap:42px; align-items:start; }
+        .steps { display:grid; gap:16px; margin-top:28px; }
+        .step { display:grid; grid-template-columns:48px 1fr; gap:16px; padding:20px 0; border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent); }
+        .step-num { width:38px; height:38px; border:1px solid currentColor; border-radius:50%; display:grid; place-items:center; font-weight:700; }
+        form { border:1px solid color-mix(in srgb,currentColor 16%,transparent); padding:30px; background:color-mix(in srgb,currentColor 4%,transparent); display:grid; gap:15px; }
+        label { display:grid; gap:7px; text-transform:uppercase; letter-spacing:.12em; font-size:11px; font-weight:700; }
+        input,select,textarea { width:100%; box-sizing:border-box; border:1px solid color-mix(in srgb,currentColor 18%,transparent); background:color-mix(in srgb,currentColor 4%,transparent); color:inherit; padding:13px 14px; font:inherit; outline:none; }
+        textarea { min-height:108px; resize:vertical; }
+        .field-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .checkbox { display:flex; gap:10px; align-items:center; text-transform:none; letter-spacing:0; font-size:13px; color:color-mix(in srgb,currentColor 76%,transparent); }
+        .checkbox input { width:auto; }
+        .submit { background:#050505; color:#F7F5F0; border:0; padding:15px 18px; text-transform:uppercase; letter-spacing:.14em; font-weight:800; cursor:pointer; }
+        .dark .submit { background:var(--amber); color:#050505; }
+        .rights { border:1px solid color-mix(in srgb,currentColor 13%,transparent); padding:22px; margin-top:26px; }
+        .footer { padding:44px 0; border-top:1px solid color-mix(in srgb,currentColor 12%,transparent); display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; color:color-mix(in srgb,currentColor 68%,transparent); }
+        .error { color:#ffb4a8; margin:0; }
+        @media (max-width:900px){ .ca-hero,.process-form{grid-template-columns:1fr}.grid-4,.cases{grid-template-columns:1fr 1fr}.hero-object{min-height:300px}.ca-nav{gap:14px}.field-grid{grid-template-columns:1fr} }
+        @media (max-width:600px){ .grid-4,.cases{grid-template-columns:1fr}.ca-header{align-items:flex-start}.ca-nav a{display:none}h1{font-size:3.5rem}.ca-shell{width:min(100% - 28px,1160px)} }
+      `}</style>
 
-          <div style={{ ...card, padding: "clamp(30px,7vw,76px)", position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", inset: "auto -10% -42% auto", width: 380, height: 380, borderRadius: "50%", background: "rgba(232,189,114,.12)", filter: "blur(10px)" }} />
-            <div style={{ position: "relative", maxWidth: 930 }}>
-              <Eyebrow>Conduct Alchemy Licensing</Eyebrow>
-              <h1 style={{ margin: "16px 0", fontSize: "clamp(3rem,8vw,6.45rem)", lineHeight: .92, letterSpacing: "-.075em" }}>Music clearance for cinematic stories and brand worlds.</h1>
-              <p style={{ maxWidth: 750, color: "#e2d2ba", fontSize: "clamp(1.04rem,2vw,1.28rem)", lineHeight: 1.68 }}>Original Conduct Alchemy compositions can be reviewed for film, television, trailers, advertising, creator content and pitch work — with the licence scoped to the way the music will actually be used.</p>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 22 }}>{["Sync", "Advertising", "Trailers", "Creators", "Custom edits"].map((item) => <span key={item} style={pill}>{item}</span>)}</div>
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 30 }}>
-                <a href="#clearance-request" style={{ color: "#0b0705", background: "#e8bd72", padding: "14px 18px", borderRadius: 999, fontWeight: 950, textDecoration: "none" }}>Start a clearance request</a>
-                <a href="#process" style={{ color: "#f7ead5", border: "1px solid rgba(231,184,105,.28)", padding: "14px 18px", borderRadius: 999, fontWeight: 850, textDecoration: "none" }}>See how clearance works</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <div className="ca-shell">
+        <header className="ca-header">
+          <a className="ca-brand" href="/">
+            <LogoMark />
+            <span className="ca-word">Conduct Alchemy</span>
+          </a>
+          <nav className="ca-nav" aria-label="Primary navigation">
+            <a href="/">Catalogue</a>
+            <a href="/licensing">Licensing</a>
+            <a href="/">Visual Worlds</a>
+            <a href="/">About</a>
+            <button className="mode-button" type="button" onClick={() => setArtifactMode((value) => !value)}>
+              {artifactMode ? "Exit Artifact" : "View as Artifact"}
+            </button>
+          </nav>
+        </header>
 
-      <section id="process" style={{ padding: "30px 0" }}>
-        <div style={shell}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 330px), 1fr))", gap: 22, alignItems: "start" }}>
+        {submitted ? (
+          <section className="ca-hero">
             <div>
-              <Eyebrow>How clearance works</Eyebrow>
-              <h2 style={{ margin: "12px 0", fontSize: "clamp(2rem,4vw,3.5rem)", lineHeight: .98, letterSpacing: "-.055em" }}>Three clear steps. No mystery pricing.</h2>
-              <p style={{ color: "#cfc0aa", lineHeight: 1.7, fontSize: 16, margin: 0 }}>Pick the closest use case, share the project details, and we’ll scope the licence around the things that actually change the fee: media, territory, duration, paid exposure, exclusivity and deliverables.</p>
+              <p className="eyebrow">Conduct Alchemy Licensing</p>
+              <h1>Clearance request received.</h1>
+              <p className="lead">Thank you. We’ll review the project context, intended use and clearance route before responding with the most suitable next step.</p>
             </div>
-            <div style={{ display: "grid", gap: 12 }}>
-              {steps.map(([num, title, action, outcome]) => (
-                <article key={num} style={{ ...card, padding: 20, display: "grid", gridTemplateColumns: "54px minmax(0,1fr)", gap: 16 }}>
-                  <div style={{ width: 42, height: 42, borderRadius: "50%", display: "grid", placeItems: "center", color: "#0b0705", background: "#e8bd72", fontWeight: 950 }}>{num}</div>
-                  <div><h3 style={{ margin: "0 0 6px", fontSize: 22 }}>{title}</h3><p style={{ margin: 0, color: "#dfcfb6", lineHeight: 1.58 }}>{action}</p><p style={{ margin: "10px 0 0", color: "#a8987f", lineHeight: 1.55, fontSize: 13 }}>Outcome: {outcome}</p></div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+            <div className="hero-object"><div className="monolith"><LogoMark /></div></div>
+          </section>
+        ) : (
+          <>
+            <section className="ca-hero">
+              <div>
+                <p className="eyebrow">Curated music for story & brand</p>
+                <h1>Exceptional music. Clear rights. Confident creativity.</h1>
+                <p className="lead">Conduct Alchemy is a premium licensing house for storytellers. We curate cinematic music of exceptional quality — crafted by visionary artists and cleared for global use.</p>
+                <div className="actions">
+                  <a className="btn primary" href="#request">Request access</a>
+                  <a className="btn" href="#use-cases">Explore use cases</a>
+                </div>
+              </div>
+              <div className="hero-object" aria-label="Conduct Alchemy brand artifact">
+                <div className="monolith"><LogoMark /></div>
+              </div>
+            </section>
 
-      <section style={{ padding: "34px 0" }}>
-        <div style={shell}>
-          <Eyebrow>Choose the closest route</Eyebrow>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px,1fr))", gap: 14, marginTop: 16 }}>
-            {routes.map(([title, copy, meta]) => <article key={title} style={{ ...card, padding: 22 }}><h3 style={{ margin: "0 0 8px", fontSize: 24 }}>{title}</h3><p style={{ color: "#cfc0aa", lineHeight: 1.62, margin: 0 }}>{copy}</p><p style={{ color: "#a8987f", lineHeight: 1.55, margin: "12px 0 0", fontSize: 13 }}>{meta}</p></article>)}
-          </div>
-        </div>
-      </section>
+            <section className="section">
+              <div className="grid-4">
+                {pillars.map(([title, copy]) => (
+                  <article className="pillar" key={title}>
+                    <h3>{title}</h3>
+                    <p>{copy}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
 
-      <section id="clearance-request" style={{ padding: "44px 0 76px" }}>
-        <div style={{ ...shell, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%,360px),1fr))", gap: 28, alignItems: "start" }}>
-          <div style={{ position: "sticky", top: 24 }}>
-            <Eyebrow>Project intake</Eyebrow>
-            <h2 style={{ fontSize: "clamp(2.1rem,5vw,4.3rem)", lineHeight: .98, letterSpacing: "-.055em", margin: "12px 0" }}>Request the right clearance path.</h2>
-            <p style={{ color: "#d8c8ae", fontSize: 17, lineHeight: 1.7, maxWidth: 540 }}>Tell us where the music will live. We’ll review the intended use and respond with the most suitable route, whether that is creator use, commercial campaign, sync, pitch access or bespoke work.</p>
-            <div style={{ ...card, padding: 18, marginTop: 22 }}><h3 style={{ margin: "0 0 12px", fontSize: 20 }}>Available on request</h3><div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{deliverables.map((item) => <span key={item} style={pill}>{item}</span>)}</div></div>
-            <div style={{ ...panel, padding: 18, marginTop: 12 }}><h3 style={{ margin: "0 0 8px", fontSize: 18 }}>Rights note</h3><p style={{ color: "#cfc0aa", lineHeight: 1.65, margin: 0 }}>Submitting an enquiry does not grant usage rights. No rights are granted until licence terms are confirmed in writing.</p></div>
-          </div>
+            <section id="use-cases" className="section">
+              <p className="eyebrow">Made for every moment that moves</p>
+              <h2>Licensing routes for screen, campaigns and creative work.</h2>
+              <div className="cases">
+                {useCases.map(([title, copy]) => (
+                  <article className="case" key={title}>
+                    <h3>{title}</h3>
+                    <p>{copy}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
 
-          <form onSubmit={handleSubmit} style={{ ...card, padding: "clamp(22px,4vw,34px)", display: "grid", gap: 15 }}>
-            <div><Eyebrow>Clearance brief</Eyebrow><h2 style={{ margin: "8px 0 4px", fontSize: 28 }}>Send the project details</h2><p style={{ margin: 0, color: "#a8987f", lineHeight: 1.55, fontSize: 13 }}>Required fields are kept light. More detail helps us avoid the wrong licence route.</p></div>
-            <label style={labelStyle}>Name *<input style={inputStyle} placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} /></label>
-            <label style={labelStyle}>Email *<input style={inputStyle} placeholder="you@company.com" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
-            <label style={labelStyle}>Company / production<input style={inputStyle} placeholder="Company, agency, studio or production" value={company} onChange={(e) => setCompany(e.target.value)} /></label>
-            <label style={labelStyle}>Track, scene or mood<input style={inputStyle} placeholder="Track name, reference, mood or scene" value={trackInterest} onChange={(e) => setTrackInterest(e.target.value)} /></label>
-            <label style={labelStyle}>Project type<select style={inputStyle} value={projectType} onChange={(e) => setProjectType(e.target.value)}>{projectTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px,1fr))", gap: 12 }}><label style={labelStyle}>Territory<select style={inputStyle} value={territory} onChange={(e) => setTerritory(e.target.value)}>{territories.map((item) => <option key={item}>{item}</option>)}</select></label><label style={labelStyle}>Duration<select style={inputStyle} value={duration} onChange={(e) => setDuration(e.target.value)}>{durations.map((item) => <option key={item}>{item}</option>)}</select></label></div>
-            <label style={labelStyle}>Paid media / campaign spend<select style={inputStyle} value={paidMedia} onChange={(e) => setPaidMedia(e.target.value)}>{paidMediaOptions.map((item) => <option key={item}>{item}</option>)}</select></label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px,1fr))", gap: 12 }}><label style={labelStyle}>Clearance deadline<input style={inputStyle} placeholder="e.g. 2 weeks / date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></label><label style={labelStyle}>Budget range, if known<input style={inputStyle} placeholder="Optional / to be discussed" value={budgetRange} onChange={(e) => setBudgetRange(e.target.value)} /></label></div>
-            <label style={labelStyle}>Intended use<textarea style={{ ...inputStyle, minHeight: 118, resize: "vertical" }} placeholder="Tell us about the scene, campaign, platform, audience, edit length, paid media or pitch context." value={intendedUsage} onChange={(e) => setIntendedUsage(e.target.value)} /></label>
-            <label style={{ display: "flex", gap: 10, alignItems: "center", color: "#e6d4b8", fontSize: 13, lineHeight: 1.5 }}><input type="checkbox" checked={exclusive} onChange={(e) => setExclusive(e.target.checked)} />Exclusivity, category restriction or protected project access may be required</label>
-            {error && <p style={{ color: "#ffb4a8", margin: 0 }}>{error}</p>}
-            <button type="submit" disabled={submitting} style={{ border: 0, borderRadius: 999, padding: "15px 22px", background: "#e8bd72", color: "#0b0705", fontWeight: 950, fontSize: 15, cursor: submitting ? "not-allowed" : "pointer" }}>{submitting ? "Sending..." : "Send clearance request"}</button>
-            <p style={{ color: "#a8987f", lineHeight: 1.55, margin: 0, fontSize: 12 }}>No licence or usage permission is granted until confirmed in writing.</p>
-          </form>
-        </div>
-      </section>
+            <section id="request" className="section process-form">
+              <div>
+                <p className="eyebrow">Rights & clearance confidence</p>
+                <h2>Simple, clear licensing. Global coverage.</h2>
+                <p className="lead">No public price anchoring. No unclear permissions. Tell us what you are making and we’ll scope the music around media, territory, duration, paid exposure, exclusivity and deliverables.</p>
+                <div className="steps">
+                  {steps.map(([num, title, copy]) => (
+                    <article className="step" key={num}>
+                      <div className="step-num">{num}</div>
+                      <div>
+                        <h3>{title}</h3>
+                        <p>{copy}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+                <div className="rights">
+                  <p className="eyebrow">Rights note</p>
+                  <p className="note">Submitting an enquiry does not grant usage rights. No rights are granted until licence terms are confirmed in writing.</p>
+                </div>
+              </div>
 
-      <section style={{ padding: "0 0 84px" }}>
-        <div style={shell}>
-          <Eyebrow>Common questions</Eyebrow>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px,1fr))", gap: 14, marginTop: 16 }}>{faqs.map(([title, copy]) => <article key={title} style={{ ...panel, padding: 20 }}><h3 style={{ margin: "0 0 8px", fontSize: 18 }}>{title}</h3><p style={{ margin: 0, color: "#cfc0aa", lineHeight: 1.62 }}>{copy}</p></article>)}</div>
-        </div>
-      </section>
+              <form onSubmit={handleSubmit}>
+                <label>Name *<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Your name" /></label>
+                <label>Email *<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="you@company.com" /></label>
+                <label>Company / production<input value={company} onChange={(event) => setCompany(event.target.value)} placeholder="Company, agency, studio or production" /></label>
+                <label>Track / mood of interest<input value={trackInterest} onChange={(event) => setTrackInterest(event.target.value)} placeholder="Track name, reference, mood or scene" /></label>
+                <label>Project type<select value={projectType} onChange={(event) => setProjectType(event.target.value)}>{projectTypes.map((item) => <option key={item}>{item}</option>)}</select></label>
+                <div className="field-grid">
+                  <label>Territory<select value={territory} onChange={(event) => setTerritory(event.target.value)}>{territories.map((item) => <option key={item}>{item}</option>)}</select></label>
+                  <label>Duration<select value={duration} onChange={(event) => setDuration(event.target.value)}>{durations.map((item) => <option key={item}>{item}</option>)}</select></label>
+                </div>
+                <div className="field-grid">
+                  <label>Paid media<select value={paidMedia} onChange={(event) => setPaidMedia(event.target.value)}>{paidMediaOptions.map((item) => <option key={item}>{item}</option>)}</select></label>
+                  <label>Deadline<input value={deadline} onChange={(event) => setDeadline(event.target.value)} placeholder="e.g. 2 weeks / date" /></label>
+                </div>
+                <label>Budget range, if known<input value={budgetRange} onChange={(event) => setBudgetRange(event.target.value)} placeholder="Optional / to be discussed" /></label>
+                <label>Intended use<textarea value={intendedUsage} onChange={(event) => setIntendedUsage(event.target.value)} placeholder="Tell us about the scene, campaign, platform, paid media, audience, edit length or pitch context." /></label>
+                <label className="checkbox"><input type="checkbox" checked={exclusive} onChange={(event) => setExclusive(event.target.checked)} />Exclusivity or category restriction may be required</label>
+                {error && <p className="error">{error}</p>}
+                <button className="submit" disabled={submitting} type="submit">{submitting ? "Sending..." : "Request access to get started"}</button>
+                <p className="note">Pricing is scoped after review. No licence or usage permission is granted until confirmed in writing.</p>
+              </form>
+            </section>
+          </>
+        )}
+
+        <footer className="footer">
+          <a className="ca-brand" href="/">
+            <LogoMark />
+            <span className="ca-word">Conduct Alchemy</span>
+          </a>
+          <div>Curated. Licensed. Elevated.</div>
+          <div>Made for storytellers.</div>
+        </footer>
+      </div>
     </main>
   );
 }
