@@ -3,6 +3,13 @@ import { useState } from "react";
 
 const API = "https://dark-voice-ab4b.rapidstillz.workers.dev";
 
+const ASSETS = {
+  navWhite: "/brand/conduct-alchemy/logo/svg/ca-logo-nav-white.svg",
+  navBlack: "/brand/conduct-alchemy/logo/svg/ca-logo-nav-black.svg",
+  motifWhite: "/brand/conduct-alchemy/marks/svg/ca-motif-vector-white.svg",
+  motifBlack: "/brand/conduct-alchemy/marks/svg/ca-motif-vector.svg",
+};
+
 const projectTypes = [
   "Film / Drama",
   "TV / Documentary",
@@ -46,16 +53,18 @@ function usageFrom(projectType: string) {
   return "Film";
 }
 
-function LogoMark() {
+function ConductAlchemyLogo({ artifactMode, compact = false }: { artifactMode: boolean; compact?: boolean }) {
   return (
-    <span className="ca-mark" aria-hidden="true">
-      <i />
-      <i />
-      <i />
-      <i />
-      <i />
-    </span>
+    <img
+      className={compact ? "ca-logo compact" : "ca-logo"}
+      src={artifactMode ? ASSETS.navBlack : ASSETS.navWhite}
+      alt="Conduct Alchemy"
+    />
   );
+}
+
+function Motif({ artifactMode }: { artifactMode: boolean }) {
+  return <img className="ca-motif" src={artifactMode ? ASSETS.motifBlack : ASSETS.motifWhite} alt="" aria-hidden="true" />;
 }
 
 export default function Licensing() {
@@ -127,69 +136,87 @@ export default function Licensing() {
         .ca-page {
           --black:#050505; --charcoal:#1F2120; --slate:#70736F; --warm:#A2A39E;
           --paper:#EDE9E3; --white:#F7F5F0; --amber:#D4A24A;
-          min-height:100vh; font-family:'IBM Plex Sans', Inter, system-ui, sans-serif;
+          min-height:100vh;
+          font-family:'IBM Plex Sans', Inter, system-ui, sans-serif;
           transition:background .35s ease,color .35s ease;
         }
-        .ca-page.dark { background:radial-gradient(circle at 75% 12%,rgba(212,162,74,.15),transparent 30rem),linear-gradient(135deg,#050505,#111312 58%,#050505); color:var(--paper); }
-        .ca-page.artifact { background:linear-gradient(180deg,#F7F5F0,#EDE9E3); color:#151515; }
+        .ca-page.dark {
+          --surface: #0b0d0c;
+          --surface-soft: rgba(255,255,255,.04);
+          --line: rgba(247,245,240,.16);
+          --copy: #e7e1d6;
+          --muted-copy: #b9b0a2;
+          background:radial-gradient(circle at 75% 12%,rgba(212,162,74,.16),transparent 31rem),linear-gradient(135deg,#050505,#111312 58%,#050505);
+          color:var(--paper);
+        }
+        .ca-page.artifact {
+          --surface: #f2eee7;
+          --surface-soft: rgba(5,5,5,.035);
+          --line: rgba(5,5,5,.14);
+          --copy: #1d1d1b;
+          --muted-copy: #67645f;
+          background:linear-gradient(180deg,#F7F5F0,#EDE9E3);
+          color:var(--copy);
+        }
         .ca-shell { width:min(1160px,calc(100% - 40px)); margin:0 auto; }
-        .ca-header { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:28px 0; border-bottom:1px solid color-mix(in srgb,currentColor 14%,transparent); }
-        .ca-brand { display:flex; align-items:center; gap:13px; color:inherit; text-decoration:none; }
-        .ca-mark { width:42px; height:38px; display:inline-flex; align-items:center; justify-content:center; gap:5px; }
-        .ca-mark i { display:block; width:5px; border-radius:999px; background:currentColor; opacity:.96; }
-        .ca-mark i:nth-child(1), .ca-mark i:nth-child(5) { height:12px; }
-        .ca-mark i:nth-child(2), .ca-mark i:nth-child(4) { height:24px; }
-        .ca-mark i:nth-child(3) { height:36px; }
-        .ca-word { font-family:'Cormorant Garamond', Georgia, serif; font-size:26px; line-height:1; letter-spacing:.01em; }
+        .ca-header { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:28px 0; border-bottom:1px solid var(--line); }
+        .ca-brand { display:flex; align-items:center; color:inherit; text-decoration:none; }
+        .ca-logo { display:block; width:222px; max-width:42vw; height:auto; }
+        .ca-logo.compact { width:218px; opacity:.82; }
         .ca-nav { display:flex; gap:28px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
         .ca-nav a, .mode-button { color:inherit; text-decoration:none; text-transform:uppercase; letter-spacing:.18em; font-size:11px; font-weight:700; background:none; border:0; cursor:pointer; }
-        .mode-button { border:1px solid color-mix(in srgb,currentColor 28%,transparent); padding:12px 16px; }
+        .mode-button { border:1px solid var(--line); padding:12px 16px; }
+        .mode-button:hover, .btn.secondary:hover { border-color:var(--amber); color:var(--amber); }
         .ca-hero { display:grid; grid-template-columns:minmax(0,1.03fr) minmax(320px,.72fr); gap:52px; align-items:center; padding:68px 0 56px; }
         .eyebrow { text-transform:uppercase; letter-spacing:.22em; font-size:12px; color:var(--amber); font-weight:700; margin:0 0 24px; }
-        h1,h2,h3 { font-family:'Cormorant Garamond', Georgia, serif; font-weight:500; letter-spacing:-.025em; }
+        h1,h2,h3 { font-family:'Cormorant Garamond', Georgia, serif; font-weight:500; letter-spacing:-.025em; color:var(--copy); }
+        .dark h1,.dark h2,.dark h3 { color:var(--paper); }
         h1 { font-size:clamp(4rem,8vw,7.6rem); line-height:.9; margin:0 0 24px; max-width:840px; }
         h2 { font-size:clamp(2.5rem,4.8vw,4.8rem); line-height:.95; margin:0; }
         h3 { font-size:28px; line-height:1; margin:0 0 10px; }
-        .lead { max-width:650px; font-size:18px; line-height:1.75; color:color-mix(in srgb,currentColor 76%,transparent); }
+        .lead { max-width:650px; font-size:18px; line-height:1.75; color:var(--muted-copy); }
         .actions { display:flex; gap:14px; flex-wrap:wrap; margin-top:32px; }
-        .btn { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; text-transform:uppercase; letter-spacing:.14em; font-size:12px; font-weight:800; padding:16px 22px; border:1px solid currentColor; }
+        .btn { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; text-transform:uppercase; letter-spacing:.14em; font-size:12px; font-weight:800; padding:16px 22px; border:1px solid currentColor; color:inherit; }
         .btn.primary { background:var(--amber); color:#050505; border-color:var(--amber); }
-        .hero-object { min-height:390px; border:1px solid color-mix(in srgb,currentColor 16%,transparent); position:relative; overflow:hidden; display:grid; place-items:center; background:color-mix(in srgb,currentColor 4%,transparent); }
+        .btn.secondary { color:var(--copy); border-color:var(--line); background:transparent; }
+        .dark .btn.secondary { color:var(--paper); }
+        .hero-object { min-height:390px; border:1px solid var(--line); position:relative; overflow:hidden; display:grid; place-items:center; background:var(--surface-soft); }
         .hero-object:before { content:""; position:absolute; inset:15%; border-radius:999px; background:radial-gradient(circle,rgba(212,162,74,.16),transparent 62%); filter:blur(4px); }
-        .monolith { width:min(250px,58%); aspect-ratio:1/.86; border:1px solid color-mix(in srgb,currentColor 22%,transparent); background:linear-gradient(135deg,rgba(255,255,255,.1),rgba(0,0,0,.22)); display:grid; place-items:center; box-shadow:0 40px 90px rgba(0,0,0,.3); position:relative; }
-        .monolith .ca-mark { width:92px; height:86px; color:color-mix(in srgb,currentColor 88%,transparent); }
-        .section { padding:56px 0; border-top:1px solid color-mix(in srgb,currentColor 12%,transparent); }
-        .grid-4 { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; border:1px solid color-mix(in srgb,currentColor 14%,transparent); }
-        .pillar { padding:28px; border-right:1px solid color-mix(in srgb,currentColor 12%,transparent); }
+        .monolith { width:min(250px,58%); aspect-ratio:1/.86; border:1px solid var(--line); background:linear-gradient(135deg,rgba(255,255,255,.08),rgba(0,0,0,.10)); display:grid; place-items:center; box-shadow:0 34px 80px rgba(0,0,0,.25); position:relative; }
+        .ca-motif { width:92px; height:92px; object-fit:contain; opacity:.9; }
+        .section { padding:56px 0; border-top:1px solid var(--line); }
+        .grid-4 { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; border:1px solid var(--line); }
+        .pillar { padding:28px; border-right:1px solid var(--line); }
         .pillar:last-child { border-right:0; }
-        .pillar p, .case p, .step p, .note { color:color-mix(in srgb,currentColor 68%,transparent); line-height:1.62; margin:0; }
+        .pillar p, .case p, .step p, .note { color:var(--muted-copy); line-height:1.62; margin:0; }
         .cases { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; margin-top:28px; }
-        .case { min-height:165px; padding:24px; border:1px solid color-mix(in srgb,currentColor 14%,transparent); background:color-mix(in srgb,currentColor 4%,transparent); }
+        .case { min-height:165px; padding:24px; border:1px solid var(--line); background:var(--surface-soft); }
         .process-form { display:grid; grid-template-columns:minmax(0,.9fr) minmax(340px,1fr); gap:42px; align-items:start; }
         .steps { display:grid; gap:16px; margin-top:28px; }
-        .step { display:grid; grid-template-columns:48px 1fr; gap:16px; padding:20px 0; border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent); }
+        .step { display:grid; grid-template-columns:48px 1fr; gap:16px; padding:20px 0; border-bottom:1px solid var(--line); }
         .step-num { width:38px; height:38px; border:1px solid currentColor; border-radius:50%; display:grid; place-items:center; font-weight:700; }
-        form { border:1px solid color-mix(in srgb,currentColor 16%,transparent); padding:30px; background:color-mix(in srgb,currentColor 4%,transparent); display:grid; gap:15px; }
-        label { display:grid; gap:7px; text-transform:uppercase; letter-spacing:.12em; font-size:11px; font-weight:700; }
-        input,select,textarea { width:100%; box-sizing:border-box; border:1px solid color-mix(in srgb,currentColor 18%,transparent); background:color-mix(in srgb,currentColor 4%,transparent); color:inherit; padding:13px 14px; font:inherit; outline:none; }
+        form { border:1px solid var(--line); padding:30px; background:var(--surface-soft); display:grid; gap:15px; }
+        label { display:grid; gap:7px; text-transform:uppercase; letter-spacing:.12em; font-size:11px; font-weight:700; color:var(--copy); }
+        .dark label { color:var(--paper); }
+        input,select,textarea { width:100%; box-sizing:border-box; border:1px solid var(--line); background:var(--surface); color:var(--copy); padding:13px 14px; font:inherit; outline:none; }
+        .dark input,.dark select,.dark textarea { color:var(--paper); background:#171917; }
         textarea { min-height:108px; resize:vertical; }
         .field-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-        .checkbox { display:flex; gap:10px; align-items:center; text-transform:none; letter-spacing:0; font-size:13px; color:color-mix(in srgb,currentColor 76%,transparent); }
+        .checkbox { display:flex; gap:10px; align-items:center; text-transform:none; letter-spacing:0; font-size:13px; color:var(--muted-copy); }
         .checkbox input { width:auto; }
         .submit { background:#050505; color:#F7F5F0; border:0; padding:15px 18px; text-transform:uppercase; letter-spacing:.14em; font-weight:800; cursor:pointer; }
         .dark .submit { background:var(--amber); color:#050505; }
-        .rights { border:1px solid color-mix(in srgb,currentColor 13%,transparent); padding:22px; margin-top:26px; }
-        .footer { padding:44px 0; border-top:1px solid color-mix(in srgb,currentColor 12%,transparent); display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; color:color-mix(in srgb,currentColor 68%,transparent); }
+        .rights { border:1px solid var(--line); padding:22px; margin-top:26px; }
+        .footer { padding:44px 0; border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap; color:var(--muted-copy); }
         .error { color:#ffb4a8; margin:0; }
         @media (max-width:900px){ .ca-hero,.process-form{grid-template-columns:1fr}.grid-4,.cases{grid-template-columns:1fr 1fr}.hero-object{min-height:300px}.ca-nav{gap:14px}.field-grid{grid-template-columns:1fr} }
-        @media (max-width:600px){ .grid-4,.cases{grid-template-columns:1fr}.ca-header{align-items:flex-start}.ca-nav a{display:none}h1{font-size:3.5rem}.ca-shell{width:min(100% - 28px,1160px)} }
+        @media (max-width:600px){ .grid-4,.cases{grid-template-columns:1fr}.ca-header{align-items:flex-start}.ca-nav a{display:none}h1{font-size:3.5rem}.ca-shell{width:min(100% - 28px,1160px)}.ca-logo{width:185px;max-width:58vw} }
       `}</style>
 
       <div className="ca-shell">
         <header className="ca-header">
           <a className="ca-brand" href="/">
-            <LogoMark />
-            <span className="ca-word">Conduct Alchemy</span>
+            <ConductAlchemyLogo artifactMode={artifactMode} />
           </a>
           <nav className="ca-nav" aria-label="Primary navigation">
             <a href="/">Catalogue</a>
@@ -209,7 +236,7 @@ export default function Licensing() {
               <h1>Clearance request received.</h1>
               <p className="lead">Thank you. We’ll review the project context, intended use and clearance route before responding with the most suitable next step.</p>
             </div>
-            <div className="hero-object"><div className="monolith"><LogoMark /></div></div>
+            <div className="hero-object"><div className="monolith"><Motif artifactMode={artifactMode} /></div></div>
           </section>
         ) : (
           <>
@@ -220,11 +247,11 @@ export default function Licensing() {
                 <p className="lead">Conduct Alchemy is a premium licensing house for storytellers. We curate cinematic music of exceptional quality — crafted by visionary artists and cleared for global use.</p>
                 <div className="actions">
                   <a className="btn primary" href="#request">Request access</a>
-                  <a className="btn" href="#use-cases">Explore use cases</a>
+                  <a className="btn secondary" href="#use-cases">Explore use cases</a>
                 </div>
               </div>
               <div className="hero-object" aria-label="Conduct Alchemy brand artifact">
-                <div className="monolith"><LogoMark /></div>
+                <div className="monolith"><Motif artifactMode={artifactMode} /></div>
               </div>
             </section>
 
@@ -300,10 +327,7 @@ export default function Licensing() {
         )}
 
         <footer className="footer">
-          <a className="ca-brand" href="/">
-            <LogoMark />
-            <span className="ca-word">Conduct Alchemy</span>
-          </a>
+          <a className="ca-brand" href="/"><ConductAlchemyLogo artifactMode={artifactMode} compact /></a>
           <div>Curated. Licensed. Elevated.</div>
           <div>Made for storytellers.</div>
         </footer>
