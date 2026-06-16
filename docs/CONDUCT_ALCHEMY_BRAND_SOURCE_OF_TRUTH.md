@@ -1,38 +1,321 @@
 # Conduct Alchemy Brand Source of Truth
 
-Status: Draft consolidation
+Status: Current working source of truth
 Owner: Ash / RapidStillz
-Purpose: This file is the required first-read reference before any Conduct Alchemy site, app, licensing, creative, campaign or brand work.
+Purpose: Required first-read reference before any Conduct Alchemy site, app, licensing, creative, campaign, marketing or AI-agent work.
 
-> Important: This document is a consolidation checkpoint. It must be expanded with confirmed brand assets, logo files, typography, artwork, music release guidance and any prior ChatGPT conversation outputs that are still current.
+## Rule
 
-## Why this exists
+Conduct Alchemy work must not proceed from generic dark-page styling, isolated chat memory or placeholder SaaS patterns. Every related build conversation or coding-agent task must first read this document, the asset register and any current site state notes.
 
-Conduct Alchemy site and app work must not proceed from generic dark-page styling or isolated conversation memory. Every related build conversation should first check this document and the linked asset locations before changing public pages, licensing flows, song pages, dashboards, release pages, social hubs or store experiences.
+## Brand essence
 
-## Current brand position
+Conduct Alchemy is a premium music licensing house for storytellers. It curates cinematic music of exceptional quality, crafted by visionary artists and cleared for global use.
 
-Conduct Alchemy is a premium music and licensing brand, not a generic SaaS product.
+Core articulation:
 
-The brand should feel:
+> This is not stock. This is selection. This is alchemy.
 
-- cinematic
-- emotionally charged
-- mysterious but commercially credible
-- alchemical / transformational
-- premium and controlled
-- culturally rich where relevant
-- suitable for film, TV, trailers, brand campaigns and digital storytelling
-- founder-led but industry-facing
+Supporting expressions:
 
-Avoid making the brand feel:
+- Curated music. Story. Elevated.
+- Curated. Licensed. Elevated.
+- Premium music licensing for storytellers.
+- Music that deepens story and elevates production.
+- Made for storytellers.
 
-- generic tech/SaaS
-- overly corporate
-- cheap or template-like
-- too transparent on pricing
-- too long-form before trust is established
-- like an instant automated music marketplace
+## Brand pillars
+
+### Curated Excellence
+Handpicked music of the highest artistic and production quality.
+
+### Story-first by Design
+Music that elevates narrative, emotion and cinematic intention.
+
+### Clearance Confidence
+Global, worry-free licensing with transparent rights and terms.
+
+### Alchemy of Sound
+We transform search into discovery. Signal into story.
+
+## Tone of voice
+
+The brand voice should be:
+
+- refined: articulate, elegant and assured
+- cinematic: evocative, atmospheric and emotionally intelligent
+- curated: selective, discerning and intentional
+- confident: clear, authoritative and trustworthy
+- human: warm, collaborative and creatively empathetic
+
+Audience framing:
+
+> We speak to filmmakers, editors, supervisors, agencies and creators — people who care deeply about story and sound.
+
+Avoid:
+
+- generic SaaS language
+- cheap marketplace positioning
+- instant AI music claims
+- aggressive sales copy
+- public price anchoring without approval
+- over-explaining before trust is built
+
+## Visual identity
+
+The visual system is premium editorial, music-catalogue and apothecary-inspired.
+
+Influences:
+
+- Le Labo / apothecary labelling
+- archival catalogues
+- cinematic sound libraries
+- refined editorial layouts
+- black graphite surfaces
+- ivory / paper / parchment modes
+- amber highlights used sparingly
+- small uppercase metadata
+- serif display typography
+- structured grid systems
+
+The design should feel crafted, deliberate and collectible — not generic, not AI, not stock.
+
+## Typography
+
+### Display / editorial
+Cormorant Garamond
+
+Use for:
+
+- hero headlines
+- page titles
+- editorial quotes
+- brand expression
+- song titles where appropriate
+
+Character:
+
+- refined serif
+- classical proportions
+- premium editorial feel
+
+### UI / body
+IBM Plex Sans
+
+Use for:
+
+- navigation
+- labels
+- metadata
+- body copy
+- forms
+- admin UI
+- status text
+
+Character:
+
+- clean
+- modern
+- legible
+- systematic
+
+Fallbacks may be used in implementation, but the design intent should always reflect this pairing.
+
+## Colour palette
+
+Primary palette extracted from current Conduct Alchemy brand boards:
+
+```text
+Graphite Black: #050505
+Deep Charcoal:  #1F2120
+Slate Grey:     #70736F
+Warm Grey:      #A2A39E
+Paper:          #EDE9E3
+Soft White:     #F7F5F0
+Amber Accent:   #D4A24A
+```
+
+Usage:
+
+- #050505 / #1F2120 for immersive dark mode and cinematic moments
+- #EDE9E3 / #F7F5F0 for Artifact mode, archive pages and review contexts
+- #D4A24A for highlights, selections, CTAs and subtle moments of focus
+- greys for dividers, metadata, secondary body copy and disabled states
+
+Do not overuse amber. It should feel like a precise material accent, not a bright brand wash.
+
+## Background system
+
+### Graphite
+For dark mode and cinematic moments. Use texture sparingly to imply tactility and depth.
+
+### Paper
+For primary print and digital surfaces.
+
+### Parchment
+For archival, editorial and Artifact mode.
+
+### White
+For high-contrast clarity and print-like interfaces where needed.
+
+## Dark mode and Artifact mode
+
+Conduct Alchemy has two core presentation modes.
+
+### Dark Mode
+Focus. Depth. Immersion.
+
+Primary digital environment for long-form discovery and creative flow.
+
+Use for:
+
+- hero moments
+- music discovery
+- licensing mood-setting
+- cinematic galleries
+- audio-first interaction
+- premium access moments
+
+### Artifact Mode
+Clarity. Warmth. Reflection.
+
+A lighter archival experience for review, comparison and presentation. Made for context and confidence.
+
+Use for:
+
+- song/track pages
+- catalogue review
+- licensing metadata
+- rights and clearance panels
+- track tables
+- printable-style presentation
+- evaluation by agencies, supervisors and clients
+
+Interface mechanic:
+
+> View as Artifact / Exit Artifact is a core Conduct Alchemy UI mechanism. It lets creators shift between immersive discovery and considered evaluation.
+
+This is not a simple theme toggle. It is a brand mechanic.
+
+## Logo system
+
+Use approved lockups only.
+
+### Primary full lockup / stacked logo
+Use for hero, editorial, print and formal brand presentations.
+
+Includes:
+
+- symbol mark
+- Conduct Alchemy wordmark
+- divider
+- strapline where appropriate
+
+### Horizontal lockup / banner logo
+Use for headers, navigation bars, compact web placements and horizontal spaces where clarity and brevity are essential.
+
+### Symbol mark / icon only
+Use for favicon, app icon, social avatar, music cards, player controls, compact metadata and minimal applications.
+
+Rules:
+
+- Do not alter the logo, divider, spacing or symbol arrangement.
+- Do not recolour outside approved light/dark/amber treatments.
+- Do not use the divider separately except as part of the full lockup.
+- Strapline is for full lockup only.
+- Do not separate, skew, rotate or rearrange logo elements.
+
+## UI principles
+
+### Immersive by default
+Dark mode supports focus and creative flow.
+
+### Clarity through contrast
+Strong hierarchy, restrained colour and intentional whitespace.
+
+### Curated navigation
+Tools should get out of the way so discovery and story stay in focus.
+
+### Details with purpose
+Materials, micro-interactions and transitions should feel considered, not decorative.
+
+### Trust and transparency
+Clear rights, upfront terms and no surprises.
+
+## Site architecture direction
+
+Frontend sitemap from current visual system:
+
+- Home
+- Business
+  - Licensing Solutions
+  - How It Works
+  - Use Cases
+  - Enterprise Access
+- Fans
+  - Discover Music
+  - Playlists
+  - New Releases
+  - Featured Artists
+- Music
+  - Song Library
+  - Song Page
+  - Genre Pages
+  - Visual Worlds
+- About
+  - Our Story
+  - Our Approach
+  - Our Team
+  - Careers
+- Contact
+  - General Inquiries
+  - Partnerships
+  - Press
+- Social Feed
+  - Latest Posts
+  - Updates
+  - Community
+- Access / NDA
+  - Request Access
+  - NDA Agreement
+  - Secure Portal
+
+Internal / backend system map:
+
+- Admin Dashboard
+- CMS
+- Track Manager
+- Licensing Requests
+- Lead Tool / CRM
+- Access Control
+- Analytics / Metrics
+- Content Publishing
+- User Roles
+- Asset Library
+
+Backend principle:
+
+> Built for control. Designed for scale.
+
+## Page pattern references
+
+### Home
+Dark editorial hero with Conduct Alchemy masthead, concise brand proposition, catalogue/licensing CTA and View as Artifact mechanic. Featured works and visual worlds should feel curated, not grid-heavy.
+
+### Music Library
+Artifact-mode catalogue layout with filters, mood/genre/use-case, BPM, vocals, era/style, access level, waveform rows and curated collections.
+
+### Song page
+Artifact-mode evaluation layout: artwork, title, catalog number, duration, BPM, time signature, key, waveform player, mood profile, primary use cases, available versions, rights and clearances, story notes, lyrics excerpt and related tracks.
+
+### Licensing / Business
+Should communicate exceptional music, clear rights and confident creativity. Use licensing categories, process steps, use cases and business-ready tracks. Avoid public price anchors.
+
+### Content Hub / Journal
+Editorial light-mode content feed for stories, behind-the-scenes, shorts, releases, community spotlight and inspiration.
+
+### Admin / Internal tools
+Artifact/system style: calm, structured, editorial-operational UI. Use dark left navigation, paper panels, clear tables, pipeline states, request review flows, metrics and licensing management.
 
 ## Licensing page principles
 
@@ -42,27 +325,31 @@ Use language such as:
 
 - music clearance
 - sync licensing
+- licensing solutions
+- rights and clearance confidence
+- business-ready tracks
 - project-scoped licensing
 - film, television, trailers and brand campaigns
 - usage rights confirmed in writing
 - versions available on request
 - reviewed by project
 
-Avoid overusing:
+Avoid:
 
 - fixed public pricing
 - instant quote calculator
 - generic licence marketplace language
 - exhaustive deliverable lists above the fold
 - long FAQ-heavy layouts
+- generic card-heavy SaaS design
 
-## Public pricing position
+Public pricing position:
 
 Do not publicly expose fixed licence pricing or a live estimate unless Ash explicitly approves it.
 
 Preferred public position:
 
-Pricing is scoped by project, usage, territory, duration, media, exclusivity and deliverables. Submit the project context and Conduct Alchemy will advise the correct clearance route.
+> Pricing is scoped by project, usage, territory, duration, media, exclusivity and deliverables. Submit the project context and Conduct Alchemy will advise the correct clearance route.
 
 Internal pricing logic may be used for admin, quoting and pipeline forecasting, but should not automatically appear on the public page.
 
@@ -91,68 +378,63 @@ Human/founder/legal review remains required for:
 - final delivery of master/stem assets
 - production deployment decisions
 
-## Current asset storage requirement
+## Asset storage requirement
 
-All confirmed Conduct Alchemy brand assets should be stored in one or more stable locations and referenced here.
+All confirmed Conduct Alchemy brand assets should be stored in stable locations and referenced by the asset register.
 
-Recommended structure in GitHub:
+Recommended GitHub structure:
 
 ```text
 /public/brand/conduct-alchemy/
   logo/
   marks/
+  icons/
   typography/
   colour/
   artwork/
   release-assets/
   licensing/
+  social/
 
 docs/
   CONDUCT_ALCHEMY_BRAND_SOURCE_OF_TRUTH.md
+  CONDUCT_ALCHEMY_STYLE_GUIDE.md
+  CONDUCT_ALCHEMY_WEB_APP_VISUAL_SYSTEM.md
   CONDUCT_ALCHEMY_SITE_STATE.md
   CONDUCT_ALCHEMY_ASSET_REGISTER.md
+  CONDUCT_ALCHEMY_HANDOFF_PROMPT.md
 ```
 
 Recommended external storage for heavy media:
 
-- Google Drive for large source assets, stems, masters, image/video originals and working files
-- GitHub only for lightweight web-ready assets, source-of-truth docs and implementation references
-- Cloudflare R2 later for production-grade asset delivery where needed
+- Google Drive for large source assets, stems, masters, full-resolution images, video originals and working files
+- GitHub for lightweight web-ready assets, docs, implementation references and approved SVG/PNG/UI tokens
+- Cloudflare R2 later for production-grade controlled asset delivery
 
 ## Required workflow before brand/site changes
 
 Before changing Conduct Alchemy public pages or app experience:
 
 1. Read this document.
-2. Check the asset register.
-3. Confirm whether existing brand assets should be used.
-4. Avoid creating generic placeholder styling unless marked explicitly as temporary.
-5. If brand guidance is missing, stop and create/update the source-of-truth before designing.
-6. Keep founder checkpoints focused on visual direction, brand alignment, commercial confidence and risk.
+2. Check `docs/CONDUCT_ALCHEMY_ASSET_REGISTER.md`.
+3. Check `docs/CONDUCT_ALCHEMY_WEB_APP_VISUAL_SYSTEM.md` if present.
+4. Confirm whether approved assets should be used.
+5. Avoid generic placeholder styling unless explicitly marked temporary.
+6. If brand guidance is missing, stop and update source-of-truth before designing.
+7. Keep founder checkpoints focused on visual direction, brand alignment, commercial confidence and risk.
 
-## Current known implementation issue
+## Current implementation correction
 
-The v0.9.2 licensing PR initially improved functional structure but did not sufficiently apply Conduct Alchemy-specific brand identity. This document was created as the corrective control point.
+The v0.9.2 licensing PR began as a functional structure but did not sufficiently apply Conduct Alchemy-specific identity. Current work must now realign it with this source of truth.
 
-Next licensing iteration should:
+Next licensing iteration must:
 
-- apply confirmed CA brand assets when available
+- use the approved CA palette
+- use serif display + sans UI pairing
+- use the Conduct Alchemy logo/motif language
 - reduce generic card-grid styling
 - preserve premium clearance language
 - avoid public price anchoring
 - shorten page length
-- use more distinctive CA visual identity
-
-## Open questions to resolve
-
-- Where are the final logo/mark files?
-- What is the confirmed colour palette?
-- What typography is approved?
-- Are there existing artwork motifs, album/release visuals or visual systems that should drive the website?
-- Which Google Drive folder is the asset master location?
-- Which assets are safe to copy into GitHub/public web delivery?
-- What is the definitive Conduct Alchemy brand voice guide?
-
-## Status rules
-
-Until the above questions are resolved, any Conduct Alchemy visual build should be treated as provisional and not final brand implementation.
+- introduce Artifact/Dark mode language where useful
+- feel like premium music licensing, not a generic SaaS landing page
