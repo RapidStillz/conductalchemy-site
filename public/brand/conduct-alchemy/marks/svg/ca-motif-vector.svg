@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" role="img" aria-label="Conduct Alchemy motif black">
+  <rect width="240" height="240" fill="none"/>
+  <g fill="#050505">
+    <rect x="38" y="102" width="14" height="36" rx="7"/>
+    <rect x="72" y="72" width="14" height="96" rx="7"/>
+    <rect x="111" y="40" width="18" height="160" rx="9"/>
+    <rect x="154" y="72" width="14" height="96" rx="7"/>
+    <rect x="188" y="102" width="14" height="36" rx="7"/>
+  </g>
+</svg>
