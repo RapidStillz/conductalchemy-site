@@ -317,7 +317,7 @@ export default function Licensing() {
                 </div>
                 <label>Budget range, if known<input value={budgetRange} onChange={(event) => setBudgetRange(event.target.value)} placeholder="Optional / to be discussed" /></label>
                 <label>Intended use<textarea value={intendedUsage} onChange={(event) => setIntendedUsage(event.target.value)} placeholder="Tell us about the scene, campaign, platform, paid media, audience, edit length or pitch context." /></label>
-                <label className="checkbox"><input type="checkbox" checked={exclusive} onChange={(event) => setExclusive(event.checked)} />Exclusivity or category restriction may be required</label>
+                <label className="checkbox"><input type="checkbox" checked={exclusive} onChange={(event) => setExclusive(event.target.checked)} />Exclusivity or category restriction may be required</label>
                 {error && <p className="error">{error}</p>}
                 <button className="submit" disabled={submitting} type="submit">{submitting ? "Sending..." : "Request access to get started"}</button>
                 <p className="note">Pricing is scoped after review. No licence or usage permission is granted until confirmed in writing.</p>
