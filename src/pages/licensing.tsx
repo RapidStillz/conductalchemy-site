@@ -27,7 +27,7 @@ const paidMediaOptions = ["No / organic only", "Yes / paid media planned", "Unsu
 const pillars = [
   ["Curated Excellence", "Handpicked music of the highest artistic and production quality."],
   ["Story-first by Design", "Music that elevates narrative, emotion and cinematic intention."],
-  ["Clearance Confidence", "Global, worry-free licensing with transparent rights and terms."],
+  ["Clearance Confidence", "Rights-aware licensing with transparent scope, terms and usage boundaries."],
   ["Alchemy of Sound", "We transform search into discovery. Signal into story."],
 ];
 
@@ -244,7 +244,7 @@ export default function Licensing() {
               <div>
                 <p className="eyebrow">Curated music for story & brand</p>
                 <h1>Exceptional music. Clear rights. Confident creativity.</h1>
-                <p className="lead">Conduct Alchemy is a premium licensing house for storytellers. We curate cinematic music of exceptional quality — crafted by visionary artists and cleared for global use.</p>
+                <p className="lead">Conduct Alchemy is a premium licensing house for storytellers. We curate cinematic music of exceptional quality — crafted by visionary artists and prepared for properly scoped commercial use.</p>
                 <div className="actions">
                   <a className="btn primary" href="#request">Request access</a>
                   <a className="btn secondary" href="#use-cases">Explore use cases</a>
@@ -282,7 +282,7 @@ export default function Licensing() {
             <section id="request" className="section process-form">
               <div>
                 <p className="eyebrow">Rights & clearance confidence</p>
-                <h2>Simple, clear licensing. Global coverage.</h2>
+                <h2>Simple, clear licensing. Properly scoped usage.</h2>
                 <p className="lead">No public price anchoring. No unclear permissions. Tell us what you are making and we’ll scope the music around media, territory, duration, paid exposure, exclusivity and deliverables.</p>
                 <div className="steps">
                   {steps.map(([num, title, copy]) => (
@@ -317,7 +317,7 @@ export default function Licensing() {
                 </div>
                 <label>Budget range, if known<input value={budgetRange} onChange={(event) => setBudgetRange(event.target.value)} placeholder="Optional / to be discussed" /></label>
                 <label>Intended use<textarea value={intendedUsage} onChange={(event) => setIntendedUsage(event.target.value)} placeholder="Tell us about the scene, campaign, platform, paid media, audience, edit length or pitch context." /></label>
-                <label className="checkbox"><input type="checkbox" checked={exclusive} onChange={(event) => setExclusive(event.target.checked)} />Exclusivity or category restriction may be required</label>
+                <label className="checkbox"><input type="checkbox" checked={exclusive} onChange={(event) => setExclusive(event.checked)} />Exclusivity or category restriction may be required</label>
                 {error && <p className="error">{error}</p>}
                 <button className="submit" disabled={submitting} type="submit">{submitting ? "Sending..." : "Request access to get started"}</button>
                 <p className="note">Pricing is scoped after review. No licence or usage permission is granted until confirmed in writing.</p>
