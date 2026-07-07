@@ -1,10 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Home from "./pages/home";
 import Admin from "./pages/admin";
 import Licensing from "./pages/licensing";
-
-function Home() {
-  return <div style={{ padding: 40 }}>Conduct Alchemy</div>;
-}
 
 export default function App() {
   return (
