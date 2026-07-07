@@ -87,6 +87,7 @@ export default function Home() {
         .home-hero h1 { font-size:clamp(4.2rem,8.6vw,8.4rem); line-height:.86; max-width:900px; }
         .hero-lead { max-width:680px; margin:28px 0 0; font-size:18px; line-height:1.72; color:var(--muted); }
         .hero-actions { display:flex; gap:14px; flex-wrap:wrap; margin-top:34px; }
+        .hero-trust { max-width:620px; margin:18px 0 0; color:var(--muted); font-size:13px; line-height:1.6; }
         .home-btn { display:inline-flex; align-items:center; justify-content:center; padding:15px 20px; border:1px solid var(--line); text-transform:uppercase; letter-spacing:.14em; font-size:11px; font-weight:800; text-decoration:none; color:inherit; }
         .home-btn.primary { background:var(--amber); border-color:var(--amber); color:#050505; }
         .home-btn.secondary:hover { border-color:var(--amber); color:var(--amber); }
@@ -203,9 +204,12 @@ export default function Home() {
               the rights clarity creative teams need to move with confidence.
             </p>
             <div className="hero-actions">
-              <a className="home-btn primary" href="#approach">Explore the approach</a>
-              <Link className="home-btn secondary" to="/licensing">Request clearance</Link>
+              <Link className="home-btn primary" to="/licensing">Start a clearance request</Link>
+              <a className="home-btn secondary" href="#approach">Explore the approach</a>
             </div>
+            <p className="hero-trust">
+              Rights are scoped by project, media, territory, term, paid support, exclusivity and deliverables before use is granted.
+            </p>
           </div>
 
           <div className="hero-artifact" aria-hidden="true">
