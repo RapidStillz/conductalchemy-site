@@ -214,7 +214,7 @@ export default function Licensing() {
         .footer { padding:44px 0; border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap; color:var(--muted-copy); }
         .error { color:#ffb4a8; margin:0; }
         @media (max-width:900px){ .ca-hero,.process-form{grid-template-columns:1fr}.grid-4,.cases{grid-template-columns:1fr 1fr}.hero-object{min-height:300px}.ca-nav{gap:14px}.field-grid{grid-template-columns:1fr} }
-        @media (max-width:600px){ .grid-4,.cases{grid-template-columns:1fr}.ca-header{align-items:flex-start}.ca-nav a{display:none}h1{font-size:3.5rem}.ca-shell{width:min(100% - 28px,1160px)}.ca-logo{width:185px;max-width:58vw}.step{grid-template-columns:1fr}.step-num{margin-bottom:4px} }
+        @media (max-width:600px){ .grid-4,.cases{grid-template-columns:1fr}.ca-header{align-items:flex-start;flex-direction:column}.ca-nav{justify-content:flex-start;gap:10px 14px;width:100%}.ca-nav a{display:inline-flex}.mode-button{padding:10px 12px}h1{font-size:3.5rem}.ca-shell{width:min(100% - 28px,1160px)}.ca-logo{width:185px;max-width:58vw}.step{grid-template-columns:1fr}.step-num{margin-bottom:4px} }
       `}</style>
 
       <div className="ca-shell">
