@@ -32,17 +32,19 @@ const pillars = [
 ];
 
 const useCases = [
-  ["Film & TV", "Feature films, series, documentaries and scripted visual work."],
-  ["Trailers & Promo", "High-impact music for trailers, teasers, launch films and promos."],
-  ["Brands & Agencies", "Distinctive sound for advertising, campaigns and branded stories."],
-  ["Digital & Social", "Music for creator content, social films and digital experiences."],
+  ["Film / TV / trailer", "Cinematic music for scenes, trailers, documentaries, promos and screen-led storytelling."],
+  ["Brand / advertising", "Distinctive sound for campaigns, launches, paid media and branded films."],
+  ["Creator / online", "Rights-aware music for social films, channels, digital content and editorial storytelling."],
+  ["Custom / exclusive", "Bespoke edits, stems, exclusivity, category restrictions or commissioned routes where needed."],
 ];
 
 const steps = [
-  ["1", "Request access", "Tell us about your project and how you plan to use the music."],
-  ["2", "We listen & curate", "We review the brief and suggest the right route, track or version."],
-  ["3", "Explore & license", "Preview, agree scope and move forward with complete confidence."],
+  ["01", "Tell us the use", "Share the project type, scene or campaign, platform, territory, duration, deadline and any paid media plans."],
+  ["02", "We scope the route", "We review usage, rights, deliverables, exclusivity and context so pricing follows the real clearance need."],
+  ["03", "Agree terms first", "Licence scope is confirmed in writing before final masters, edits, stems or usage permissions are released."],
 ];
+
+const scopeFactors = ["Project type", "Media", "Territory", "Duration", "Paid media", "Exclusivity", "Deliverables"];
 
 function usageFrom(projectType: string) {
   if (projectType.includes("Advertising")) return "Ads";
@@ -188,13 +190,15 @@ export default function Licensing() {
         .grid-4 { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; border:1px solid var(--line); }
         .pillar { padding:28px; border-right:1px solid var(--line); }
         .pillar:last-child { border-right:0; }
-        .pillar p, .case p, .step p, .note { color:var(--muted-copy); line-height:1.62; margin:0; }
+        .pillar p, .case p, .step p, .note, .chip-row { color:var(--muted-copy); line-height:1.62; margin:0; }
         .cases { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; margin-top:28px; }
         .case { min-height:165px; padding:24px; border:1px solid var(--line); background:var(--surface-soft); }
+        .chip-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:24px; }
+        .chip { border:1px solid var(--line); padding:8px 10px; text-transform:uppercase; letter-spacing:.12em; font-size:10px; font-weight:800; color:var(--muted-copy); background:var(--surface-soft); }
         .process-form { display:grid; grid-template-columns:minmax(0,.9fr) minmax(340px,1fr); gap:42px; align-items:start; }
         .steps { display:grid; gap:16px; margin-top:28px; }
-        .step { display:grid; grid-template-columns:48px 1fr; gap:16px; padding:20px 0; border-bottom:1px solid var(--line); }
-        .step-num { width:38px; height:38px; border:1px solid currentColor; border-radius:50%; display:grid; place-items:center; font-weight:700; }
+        .step { display:grid; grid-template-columns:54px 1fr; gap:18px; padding:22px 0; border-bottom:1px solid var(--line); }
+        .step-num { width:44px; height:44px; border:1px solid currentColor; border-radius:50%; display:grid; place-items:center; font-weight:800; font-size:12px; letter-spacing:.08em; }
         form { border:1px solid var(--line); padding:30px; background:var(--surface-soft); display:grid; gap:15px; }
         label { display:grid; gap:7px; text-transform:uppercase; letter-spacing:.12em; font-size:11px; font-weight:700; color:var(--copy); }
         .dark label { color:var(--paper); }
@@ -210,7 +214,7 @@ export default function Licensing() {
         .footer { padding:44px 0; border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap; color:var(--muted-copy); }
         .error { color:#ffb4a8; margin:0; }
         @media (max-width:900px){ .ca-hero,.process-form{grid-template-columns:1fr}.grid-4,.cases{grid-template-columns:1fr 1fr}.hero-object{min-height:300px}.ca-nav{gap:14px}.field-grid{grid-template-columns:1fr} }
-        @media (max-width:600px){ .grid-4,.cases{grid-template-columns:1fr}.ca-header{align-items:flex-start}.ca-nav a{display:none}h1{font-size:3.5rem}.ca-shell{width:min(100% - 28px,1160px)}.ca-logo{width:185px;max-width:58vw} }
+        @media (max-width:600px){ .grid-4,.cases{grid-template-columns:1fr}.ca-header{align-items:flex-start}.ca-nav a{display:none}h1{font-size:3.5rem}.ca-shell{width:min(100% - 28px,1160px)}.ca-logo{width:185px;max-width:58vw}.step{grid-template-columns:1fr}.step-num{margin-bottom:4px} }
       `}</style>
 
       <div className="ca-shell">
@@ -246,8 +250,8 @@ export default function Licensing() {
                 <h1>Exceptional music. Clear rights. Confident creativity.</h1>
                 <p className="lead">Conduct Alchemy is a premium licensing house for storytellers. We curate cinematic music of exceptional quality — crafted by visionary artists and prepared for properly scoped commercial use.</p>
                 <div className="actions">
-                  <a className="btn primary" href="#request">Request access</a>
-                  <a className="btn secondary" href="#use-cases">Explore use cases</a>
+                  <a className="btn primary" href="#request">Start a clearance request</a>
+                  <a className="btn secondary" href="#clearance">See how clearance works</a>
                 </div>
               </div>
               <div className="hero-object" aria-label="Conduct Alchemy brand artifact">
@@ -267,8 +271,9 @@ export default function Licensing() {
             </section>
 
             <section id="use-cases" className="section">
-              <p className="eyebrow">Made for every moment that moves</p>
+              <p className="eyebrow">Choose your licensing route</p>
               <h2>Licensing routes for screen, campaigns and creative work.</h2>
+              <p className="lead">Start with the way the music will live. We then scope the details that affect clearance, pricing and delivery.</p>
               <div className="cases">
                 {useCases.map(([title, copy]) => (
                   <article className="case" key={title}>
@@ -277,13 +282,16 @@ export default function Licensing() {
                   </article>
                 ))}
               </div>
+              <div className="chip-row" aria-label="Licence scope factors">
+                {scopeFactors.map((factor) => <span className="chip" key={factor}>{factor}</span>)}
+              </div>
             </section>
 
-            <section id="request" className="section process-form">
+            <section id="clearance" className="section process-form">
               <div>
                 <p className="eyebrow">Rights & clearance confidence</p>
                 <h2>Simple, clear licensing. Properly scoped usage.</h2>
-                <p className="lead">No public price anchoring. No unclear permissions. Tell us what you are making and we’ll scope the music around media, territory, duration, paid exposure, exclusivity and deliverables.</p>
+                <p className="lead">No public price anchoring. No unclear permissions. Tell us where the music will live and we’ll respond with the most suitable route.</p>
                 <div className="steps">
                   {steps.map(([num, title, copy]) => (
                     <article className="step" key={num}>
@@ -301,7 +309,7 @@ export default function Licensing() {
                 </div>
               </div>
 
-              <form onSubmit={handleSubmit}>
+              <form id="request" onSubmit={handleSubmit}>
                 <label>Name *<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Your name" /></label>
                 <label>Email *<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="you@company.com" /></label>
                 <label>Company / production<input value={company} onChange={(event) => setCompany(event.target.value)} placeholder="Company, agency, studio or production" /></label>
@@ -319,7 +327,7 @@ export default function Licensing() {
                 <label>Intended use<textarea value={intendedUsage} onChange={(event) => setIntendedUsage(event.target.value)} placeholder="Tell us about the scene, campaign, platform, paid media, audience, edit length or pitch context." /></label>
                 <label className="checkbox"><input type="checkbox" checked={exclusive} onChange={(event) => setExclusive(event.target.checked)} />Exclusivity or category restriction may be required</label>
                 {error && <p className="error">{error}</p>}
-                <button className="submit" disabled={submitting} type="submit">{submitting ? "Sending..." : "Request access to get started"}</button>
+                <button className="submit" disabled={submitting} type="submit">{submitting ? "Sending..." : "Submit project brief"}</button>
                 <p className="note">Pricing is scoped after review. No licence or usage permission is granted until confirmed in writing.</p>
               </form>
             </section>
