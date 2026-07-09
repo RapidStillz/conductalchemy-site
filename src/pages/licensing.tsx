@@ -223,10 +223,10 @@ export default function Licensing() {
             <ConductAlchemyLogo artifactMode={artifactMode} />
           </a>
           <nav className="ca-nav" aria-label="Primary navigation">
-            <a href="/">Catalogue</a>
+            <a href="#use-cases">Routes</a>
+            <a href="#clearance">Process</a>
+            <a href="#request">Brief</a>
             <a href="/licensing">Licensing</a>
-            <a href="/">Visual Worlds</a>
-            <a href="/">About</a>
             <button className="mode-button" type="button" onClick={() => setArtifactMode((value) => !value)}>
               {artifactMode ? "Exit Artifact" : "View as Artifact"}
             </button>
