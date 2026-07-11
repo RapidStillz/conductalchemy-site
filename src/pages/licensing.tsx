@@ -25,23 +25,23 @@ const durations = ["Campaign period", "1 Year", "3 Years", "Perpetual / archive"
 const paidMediaOptions = ["No / organic only", "Yes / paid media planned", "Unsure / to be confirmed"];
 
 const pillars = [
-  ["Curated Excellence", "Handpicked music of the highest artistic and production quality."],
-  ["Story-first by Design", "Music that elevates narrative, emotion and cinematic intention."],
-  ["Clearance Confidence", "Rights-aware licensing with transparent scope, terms and usage boundaries."],
+  ["Curated Excellence", "Handpicked music selected for artistic strength, production quality and creative fit."],
+  ["Story-first by Design", "Music shaped to support narrative, emotion and cinematic intention."],
+  ["Clearance-led Process", "A considered licensing route built around the intended use, scope and agreed terms."],
   ["Alchemy of Sound", "We transform search into discovery. Signal into story."],
 ];
 
 const useCases = [
   ["Film / TV / trailer", "Cinematic music for scenes, trailers, documentaries, promos and screen-led storytelling."],
   ["Brand / advertising", "Distinctive sound for campaigns, launches, paid media and branded films."],
-  ["Creator / online", "Rights-aware music for social films, channels, digital content and editorial storytelling."],
-  ["Custom / exclusive", "Bespoke edits, stems, exclusivity, category restrictions or commissioned routes where needed."],
+  ["Creator / online", "Music licensing routes for social films, channels, digital content and editorial storytelling."],
+  ["Custom / exclusive", "Bespoke edits, stems, exclusivity, category restrictions or commissioned routes where available."],
 ];
 
 const steps = [
   ["01", "Tell us the use", "Share the project type, scene or campaign, platform, territory, duration, deadline and any paid media plans."],
-  ["02", "We scope the route", "We review usage, rights, deliverables, exclusivity and context so pricing follows the real clearance need."],
-  ["03", "Agree terms first", "Licence scope is confirmed in writing before final masters, edits, stems or usage permissions are released."],
+  ["02", "We scope the route", "We review the requested use, deliverables, exclusivity and context so the proposed terms reflect the project."],
+  ["03", "Agree terms first", "Any licence scope, approved materials and permitted use are confirmed in writing before delivery or publication."],
 ];
 
 const scopeFactors = ["Project type", "Media", "Territory", "Duration", "Paid media", "Exclusivity", "Deliverables"];
@@ -238,7 +238,7 @@ export default function Licensing() {
             <div>
               <p className="eyebrow">Conduct Alchemy Licensing</p>
               <h1>Clearance request received.</h1>
-              <p className="lead">Thank you. We’ll review the project context, intended use and clearance route before responding with the most suitable next step.</p>
+              <p className="lead">Thank you. We’ll review the project context, intended use and available licensing route before responding with the most suitable next step.</p>
             </div>
             <div className="hero-object"><div className="monolith"><Motif artifactMode={artifactMode} /></div></div>
           </section>
@@ -247,8 +247,8 @@ export default function Licensing() {
             <section className="ca-hero">
               <div>
                 <p className="eyebrow">Curated music for story & brand</p>
-                <h1>Exceptional music. Clear rights. Confident creativity.</h1>
-                <p className="lead">Conduct Alchemy is a premium licensing house for storytellers. We curate cinematic music of exceptional quality — crafted by visionary artists and prepared for properly scoped commercial use.</p>
+                <h1>Exceptional music. Thoughtful licensing. Confident creativity.</h1>
+                <p className="lead">Conduct Alchemy creates and curates distinctive music for storytellers, filmmakers, brands and creators — with commercial licensing routes shaped around each project’s intended use.</p>
                 <div className="actions">
                   <a className="btn primary" href="#request">Start a clearance request</a>
                   <a className="btn secondary" href="#clearance">See how clearance works</a>
@@ -273,7 +273,7 @@ export default function Licensing() {
             <section id="use-cases" className="section">
               <p className="eyebrow">Choose your licensing route</p>
               <h2>Licensing routes for screen, campaigns and creative work.</h2>
-              <p className="lead">Start with the way the music will live. We then scope the details that affect clearance, pricing and delivery.</p>
+              <p className="lead">Start with the way the music will live. We then review the details that shape the proposed licence, pricing and delivery.</p>
               <div className="cases">
                 {useCases.map(([title, copy]) => (
                   <article className="case" key={title}>
@@ -289,9 +289,9 @@ export default function Licensing() {
 
             <section id="clearance" className="section process-form">
               <div>
-                <p className="eyebrow">Rights & clearance confidence</p>
-                <h2>Simple, clear licensing. Properly scoped usage.</h2>
-                <p className="lead">No public price anchoring. No unclear permissions. Tell us where the music will live and we’ll respond with the most suitable route.</p>
+                <p className="eyebrow">Licensing & project scope</p>
+                <h2>A clear route from project brief to agreed terms.</h2>
+                <p className="lead">Tell us where the music will live. We’ll review the request and respond with the most suitable available route for the project.</p>
                 <div className="steps">
                   {steps.map(([num, title, copy]) => (
                     <article className="step" key={num}>
@@ -305,7 +305,7 @@ export default function Licensing() {
                 </div>
                 <div className="rights">
                   <p className="eyebrow">Rights note</p>
-                  <p className="note">Submitting an enquiry does not grant usage rights. No rights are granted until licence terms are confirmed in writing.</p>
+                  <p className="note">Submitting an enquiry does not grant permission to use any music. Any permitted use begins only after the applicable licence terms have been agreed and confirmed in writing.</p>
                 </div>
               </div>
 
@@ -328,7 +328,7 @@ export default function Licensing() {
                 <label className="checkbox"><input type="checkbox" checked={exclusive} onChange={(event) => setExclusive(event.target.checked)} />Exclusivity or category restriction may be required</label>
                 {error && <p className="error">{error}</p>}
                 <button className="submit" disabled={submitting} type="submit">{submitting ? "Sending..." : "Submit project brief"}</button>
-                <p className="note">Pricing is scoped after review. No licence or usage permission is granted until confirmed in writing.</p>
+                <p className="note">Pricing and availability are confirmed after review. No licence or usage permission is granted until the applicable terms are agreed in writing.</p>
               </form>
             </section>
           </>
@@ -336,7 +336,7 @@ export default function Licensing() {
 
         <footer className="footer">
           <a className="ca-brand" href="/"><ConductAlchemyLogo artifactMode={artifactMode} compact /></a>
-          <div>Curated. Licensed. Elevated.</div>
+          <div>Curated. Considered. Project-ready.</div>
           <div>Made for storytellers.</div>
         </footer>
       </div>
