@@ -77,7 +77,7 @@ jobs:
           const findings = [];
 
           async function capture(name, path, viewport) {
-            const page = await browser.newPage({ viewportSize: viewport });
+            const page = await browser.newPage({ viewport });
             const consoleErrors = [];
             const failedRequests = [];
 
@@ -101,6 +101,17 @@ jobs:
               throw new Error(`${path} returned HTTP ${status}`);
             }
 
+            const actualViewport = await page.evaluate(() => ({
+              width: window.innerWidth,
+              height: window.innerHeight,
+              devicePixelRatio: window.devicePixelRatio,
+            }));
+            if (actualViewport.width !== viewport.width || actualViewport.height !== viewport.height) {
+              throw new Error(
+                `${name} viewport mismatch: expected ${viewport.width}x${viewport.height}, got ${actualViewport.width}x${actualViewport.height}`,
+              );
+            }
+
             await page.screenshot({
               path: `qa-evidence/${name}.png`,
               fullPage: true,
@@ -112,7 +123,8 @@ jobs:
               url: page.url(),
               status,
               title: await page.title(),
-              viewport,
+              requestedViewport: viewport,
+              actualViewport,
               bodyLength: bodyText.length,
               consoleErrors,
               failedRequests,
