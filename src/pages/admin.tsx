@@ -120,10 +120,15 @@ export default function Admin() {
       });
   }, []);
 
+  const selectLead = (lead: Lead) => {
+    setSelected(lead);
+    setPrice(typeof lead.value === "number" ? lead.value : 1500);
+  };
+
   const saveDealValue = async () => {
     if (!selected) return;
 
-    await fetch(`${API}/update-status`, {
+    const response = await fetch(`${API}/update-status`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -135,7 +140,10 @@ export default function Admin() {
       }),
     });
 
+    if (!response.ok) return;
+
     setLeads((prev) => prev.map((lead) => (lead.id === selected.id ? { ...lead, value: price } : lead)));
+    setSelected((current) => (current ? { ...current, value: price } : current));
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -144,14 +152,20 @@ export default function Admin() {
 
     const id = String(active.id);
     const newStatus = String(over.id);
+    if (!STATUSES.includes(newStatus)) return;
 
     setLeads((prev) => prev.map((lead) => (lead.id === id ? { ...lead, status: newStatus } : lead)));
+    setSelected((current) => (current?.id === id ? { ...current, status: newStatus } : current));
 
-    await fetch(`${API}/update-status`, {
+    const response = await fetch(`${API}/update-status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status: newStatus }),
     });
+
+    if (!response.ok) {
+      window.location.reload();
+    }
   };
 
   const model = getModel(leads);
@@ -187,7 +201,7 @@ export default function Admin() {
                 key={status}
                 status={status}
                 leads={leads.filter((lead) => lead.status === status)}
-                onSelect={setSelected}
+                onSelect={selectLead}
               />
             ))}
           </div>
@@ -200,6 +214,8 @@ export default function Admin() {
           <h2>£{price}</h2>
           <input
             type="number"
+            min="0"
+            step="1"
             value={price}
             onChange={(event) => setPrice(Number(event.target.value))}
             style={{ marginBottom: 12, width: "100%" }}
