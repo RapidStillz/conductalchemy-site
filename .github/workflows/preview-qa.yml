@@ -4,10 +4,24 @@ on:
   push:
     branches:
       - feat/licensing-premium-conversion
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/preview-qa.yml'
+      - 'public/brand/conduct-alchemy/**'
+      - 'src/config/env.js'
+      - 'src/config/env.ts'
+      - 'src/pages/admin.tsx'
+      - 'src/pages/licensing.tsx'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: preview-qa-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   preview-qa:
