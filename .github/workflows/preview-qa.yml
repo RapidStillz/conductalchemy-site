@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      PREVIEW_ORIGIN: https://37a5204b.conductalchemy-site.pages.dev
+      PREVIEW_ORIGIN: https://feat-licensing-premium-conve.conductalchemy-site.pages.dev
 
     steps:
       - name: Checkout
@@ -34,6 +34,19 @@ jobs:
         run: |
           npm install --no-save --ignore-scripts playwright@1.53.1
           npx playwright install --with-deps chromium
+
+      - name: Wait for branch preview
+        shell: bash
+        run: |
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error --location "$PREVIEW_ORIGIN/licensing" >/dev/null; then
+              exit 0
+            fi
+            echo "Preview not ready yet (attempt $attempt/20)"
+            sleep 15
+          done
+          echo "Preview did not become available" >&2
+          exit 1
 
       - name: Capture deployed preview evidence
         shell: bash
