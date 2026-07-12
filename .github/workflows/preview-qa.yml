@@ -54,22 +54,40 @@ jobs:
       - name: Wait for current branch preview content
         shell: bash
         run: |
-          for attempt in {1..30}; do
-            html="$(curl --fail --silent --show-error --location "$PREVIEW_ORIGIN/licensing" || true)"
-            if grep -Fq "$DEPLOY_MARKER" <<<"$html"; then
-              echo "Current licensing content is deployed."
-              exit 0
-            fi
-            echo "Waiting for current licensing content (attempt $attempt/30)"
-            sleep 15
-          done
-          echo "Branch preview did not expose the expected current-head marker" >&2
-          exit 1
+          mkdir -p qa-evidence
+          node --input-type=module <<'EOF'
+          import { chromium } from 'playwright';
+          const origin = process.env.PREVIEW_ORIGIN;
+          const marker = process.env.DEPLOY_MARKER;
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+          let lastError = 'preview did not render';
+          for (let attempt = 1; attempt <= 30; attempt += 1) {
+            try {
+              const response = await page.goto(`${origin}/licensing`, {
+                waitUntil: 'domcontentloaded',
+                timeout: 30_000,
+              });
+              if (!response || response.status() < 200 || response.status() >= 400) {
+                throw new Error(`HTTP ${response?.status() ?? 0}`);
+              }
+              await page.getByText(marker, { exact: false }).waitFor({ timeout: 10_000 });
+              console.log('Current client-rendered licensing content is deployed.');
+              await browser.close();
+              process.exit(0);
+            } catch (error) {
+              lastError = error instanceof Error ? error.message : String(error);
+              console.log(`Waiting for rendered current licensing content (attempt ${attempt}/30): ${lastError}`);
+              await page.waitForTimeout(15_000);
+            }
+          }
+          await browser.close();
+          throw new Error(`Branch preview did not render the expected current-head marker: ${lastError}`);
+          EOF
 
       - name: Capture deployed preview evidence
         shell: bash
         run: |
-          mkdir -p qa-evidence
           node --input-type=module <<'EOF'
           import { chromium } from 'playwright';
           import fs from 'node:fs/promises';
@@ -84,27 +102,16 @@ jobs:
             const page = await browser.newPage({ viewport });
             const consoleErrors = [];
             const failedRequests = [];
-
             page.on('console', (message) => {
               if (message.type() === 'error') consoleErrors.push(message.text());
             });
             page.on('requestfailed', (request) => {
-              failedRequests.push({
-                url: request.url(),
-                failure: request.failure()?.errorText ?? 'unknown',
-              });
+              failedRequests.push({ url: request.url(), failure: request.failure()?.errorText ?? 'unknown' });
             });
 
-            const response = await page.goto(`${origin}${path}`, {
-              waitUntil: 'networkidle',
-              timeout: 45_000,
-            });
-
+            const response = await page.goto(`${origin}${path}`, { waitUntil: 'networkidle', timeout: 45_000 });
             const status = response?.status() ?? 0;
-            if (status < 200 || status >= 400) {
-              throw new Error(`${path} returned HTTP ${status}`);
-            }
-
+            if (status < 200 || status >= 400) throw new Error(`${path} returned HTTP ${status}`);
             if (interaction) await interaction(page);
 
             const actualViewport = await page.evaluate(() => ({
@@ -113,16 +120,10 @@ jobs:
               devicePixelRatio: window.devicePixelRatio,
             }));
             if (actualViewport.width !== viewport.width || actualViewport.height !== viewport.height) {
-              throw new Error(
-                `${name} viewport mismatch: expected ${viewport.width}x${viewport.height}, got ${actualViewport.width}x${actualViewport.height}`,
-              );
+              throw new Error(`${name} viewport mismatch: expected ${viewport.width}x${viewport.height}, got ${actualViewport.width}x${actualViewport.height}`);
             }
 
-            await page.screenshot({
-              path: `qa-evidence/${name}.png`,
-              fullPage: true,
-            });
-
+            await page.screenshot({ path: `qa-evidence/${name}.png`, fullPage: true });
             const bodyText = (await page.locator('body').innerText()).trim();
             findings.push({
               name,
@@ -135,46 +136,30 @@ jobs:
               consoleErrors,
               failedRequests,
             });
-
             await page.close();
           }
 
           await capture('licensing-desktop', '/licensing', { width: 1440, height: 1100 });
           await capture('licensing-mobile', '/licensing', { width: 390, height: 844 });
-          await capture(
-            'licensing-artifact-desktop',
-            '/licensing',
-            { width: 1440, height: 1100 },
-            async (page) => {
-              await page.getByRole('button', { name: 'View as Artifact' }).click();
-              await page.getByRole('button', { name: 'Exit Artifact' }).waitFor();
-              const mainClass = await page.locator('main').getAttribute('class');
-              if (!mainClass?.includes('artifact')) throw new Error('Artifact Mode class was not applied');
-              const logoSrc = await page.locator('header .ca-logo').getAttribute('src');
-              if (logoSrc !== '/brand/conduct-alchemy/logo/svg/ca-logo-nav-black.svg') {
-                throw new Error(`Artifact Mode logo mismatch: ${logoSrc}`);
-              }
-            },
-          );
+          await capture('licensing-artifact-desktop', '/licensing', { width: 1440, height: 1100 }, async (page) => {
+            await page.getByRole('button', { name: 'View as Artifact' }).click();
+            await page.getByRole('button', { name: 'Exit Artifact' }).waitFor();
+            const mainClass = await page.locator('main').getAttribute('class');
+            if (!mainClass?.includes('artifact')) throw new Error('Artifact Mode class was not applied');
+            const logoSrc = await page.locator('header .ca-logo').getAttribute('src');
+            if (logoSrc !== '/brand/conduct-alchemy/logo/svg/ca-logo-nav-black.svg') {
+              throw new Error(`Artifact Mode logo mismatch: ${logoSrc}`);
+            }
+          });
           await capture('admin-desktop', '/admin', { width: 1440, height: 1100 });
 
           await browser.close();
-          await fs.writeFile(
-            'qa-evidence/report.json',
-            JSON.stringify({ origin, generatedAt: new Date().toISOString(), findings }, null, 2),
-          );
-
+          await fs.writeFile('qa-evidence/report.json', JSON.stringify({ origin, generatedAt: new Date().toISOString(), findings }, null, 2));
           const hardFailures = findings.flatMap((finding) => [
             ...finding.consoleErrors.map((error) => `${finding.name}: console error: ${error}`),
-            ...finding.failedRequests.map(
-              (request) => `${finding.name}: request failed: ${request.url} (${request.failure})`,
-            ),
+            ...finding.failedRequests.map((request) => `${finding.name}: request failed: ${request.url} (${request.failure})`),
           ]);
-
-          if (hardFailures.length) {
-            console.error(hardFailures.join('\n'));
-            process.exitCode = 1;
-          }
+          if (hardFailures.length) throw new Error(hardFailures.join('\n'));
           EOF
 
       - name: Exercise live form and admin Worker compatibility once
@@ -198,9 +183,7 @@ jobs:
           const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
           const consoleErrors = [];
           const failedRequests = [];
-          page.on('console', (message) => {
-            if (message.type() === 'error') consoleErrors.push(message.text());
-          });
+          page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()); });
           page.on('requestfailed', (request) => {
             failedRequests.push({ url: request.url(), failure: request.failure()?.errorText ?? 'unknown' });
           });
@@ -283,7 +266,6 @@ jobs:
             failedRequests,
           };
           await fs.writeFile('qa-evidence/worker-smoke.json', JSON.stringify(result, null, 2));
-
           if (consoleErrors.length || failedRequests.length) {
             throw new Error(`Browser diagnostics failed: ${JSON.stringify({ consoleErrors, failedRequests })}`);
           }
