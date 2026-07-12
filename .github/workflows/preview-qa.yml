@@ -27,9 +27,11 @@ jobs:
   preview-qa:
     name: Capture licensing and admin evidence
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       PREVIEW_ORIGIN: https://feat-licensing-premium-conve.conductalchemy-site.pages.dev
+      WORKER_ORIGIN: https://dark-voice-ab4b.rapidstillz.workers.dev
+      DEPLOY_MARKER: Availability and the rights Conduct Alchemy can license are confirmed case by case
 
     steps:
       - name: Checkout
@@ -49,17 +51,19 @@ jobs:
           npm install --no-save --ignore-scripts playwright@1.53.1
           npx playwright install --with-deps chromium
 
-      - name: Wait for branch preview
+      - name: Wait for current branch preview content
         shell: bash
         run: |
-          for attempt in {1..20}; do
-            if curl --fail --silent --show-error --location "$PREVIEW_ORIGIN/licensing" >/dev/null; then
+          for attempt in {1..30}; do
+            html="$(curl --fail --silent --show-error --location "$PREVIEW_ORIGIN/licensing" || true)"
+            if grep -Fq "$DEPLOY_MARKER" <<<"$html"; then
+              echo "Current licensing content is deployed."
               exit 0
             fi
-            echo "Preview not ready yet (attempt $attempt/20)"
+            echo "Waiting for current licensing content (attempt $attempt/30)"
             sleep 15
           done
-          echo "Preview did not become available" >&2
+          echo "Branch preview did not expose the expected current-head marker" >&2
           exit 1
 
       - name: Capture deployed preview evidence
@@ -76,7 +80,7 @@ jobs:
           const browser = await chromium.launch({ headless: true });
           const findings = [];
 
-          async function capture(name, path, viewport) {
+          async function capture(name, path, viewport, interaction) {
             const page = await browser.newPage({ viewport });
             const consoleErrors = [];
             const failedRequests = [];
@@ -100,6 +104,8 @@ jobs:
             if (status < 200 || status >= 400) {
               throw new Error(`${path} returned HTTP ${status}`);
             }
+
+            if (interaction) await interaction(page);
 
             const actualViewport = await page.evaluate(() => ({
               width: window.innerWidth,
@@ -135,6 +141,21 @@ jobs:
 
           await capture('licensing-desktop', '/licensing', { width: 1440, height: 1100 });
           await capture('licensing-mobile', '/licensing', { width: 390, height: 844 });
+          await capture(
+            'licensing-artifact-desktop',
+            '/licensing',
+            { width: 1440, height: 1100 },
+            async (page) => {
+              await page.getByRole('button', { name: 'View as Artifact' }).click();
+              await page.getByRole('button', { name: 'Exit Artifact' }).waitFor();
+              const mainClass = await page.locator('main').getAttribute('class');
+              if (!mainClass?.includes('artifact')) throw new Error('Artifact Mode class was not applied');
+              const logoSrc = await page.locator('header .ca-logo').getAttribute('src');
+              if (logoSrc !== '/brand/conduct-alchemy/logo/svg/ca-logo-nav-black.svg') {
+                throw new Error(`Artifact Mode logo mismatch: ${logoSrc}`);
+              }
+            },
+          );
           await capture('admin-desktop', '/admin', { width: 1440, height: 1100 });
 
           await browser.close();
@@ -153,6 +174,118 @@ jobs:
           if (hardFailures.length) {
             console.error(hardFailures.join('\n'));
             process.exitCode = 1;
+          }
+          EOF
+
+      - name: Exercise live form and admin Worker compatibility once
+        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[worker-smoke]')
+        shell: bash
+        run: |
+          node --input-type=module <<'EOF'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs/promises';
+
+          const origin = process.env.PREVIEW_ORIGIN;
+          const worker = process.env.WORKER_ORIGIN;
+          const run = process.env.GITHUB_RUN_ID;
+          const testName = `CA QA ${run}`;
+          const testEmail = `ca-qa-${run}@example.invalid`;
+          const testTrack = `Worker compatibility ${run}`;
+          const testUsage = 'Automated QA only — safe to ignore';
+          const testBudget = '1234';
+
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+          const consoleErrors = [];
+          const failedRequests = [];
+          page.on('console', (message) => {
+            if (message.type() === 'error') consoleErrors.push(message.text());
+          });
+          page.on('requestfailed', (request) => {
+            failedRequests.push({ url: request.url(), failure: request.failure()?.errorText ?? 'unknown' });
+          });
+
+          await page.goto(`${origin}/licensing`, { waitUntil: 'networkidle', timeout: 45_000 });
+          await page.getByPlaceholder('Your name').fill(testName);
+          await page.getByPlaceholder('you@company.com').fill(testEmail);
+          await page.getByPlaceholder('Company, agency, studio or production').fill('Conduct Alchemy QA');
+          await page.getByPlaceholder('Track name, reference, mood or scene').fill(testTrack);
+          await page.getByLabel('Project type').selectOption({ label: 'Advertising / Brand Campaign' });
+          await page.getByLabel('Territory').selectOption({ label: 'Worldwide' });
+          await page.getByLabel('Duration').selectOption({ label: '1 Year' });
+          await page.getByLabel('Paid media').selectOption({ label: 'Yes / paid media planned' });
+          await page.getByPlaceholder('Optional / to be discussed').fill(testBudget);
+          await page.getByPlaceholder(/Tell us about the scene/).fill(testUsage);
+          await page.getByText('Exclusivity or category restriction may be required').click();
+          await page.getByRole('button', { name: 'Submit project brief' }).click();
+          await page.getByRole('heading', { name: 'Clearance request received.' }).waitFor({ timeout: 30_000 });
+          await page.screenshot({ path: 'qa-evidence/form-submission-success.png', fullPage: true });
+
+          const leadsResponse = await fetch(`${worker}/leads`);
+          if (!leadsResponse.ok) throw new Error(`GET /leads failed: ${leadsResponse.status}`);
+          const leads = await leadsResponse.json();
+          const lead = leads.find((item) => item.name === testName);
+          if (!lead) throw new Error('Submitted QA lead was not returned by /leads');
+
+          const expected = {
+            track: testTrack,
+            usage: 'Ads',
+            duration: '1 Year',
+            territory: 'Worldwide',
+            exclusive: true,
+            value: testBudget,
+          };
+          for (const [field, value] of Object.entries(expected)) {
+            if (lead[field] !== value) {
+              throw new Error(`Legacy payload mismatch for ${field}: expected ${JSON.stringify(value)}, got ${JSON.stringify(lead[field])}`);
+            }
+          }
+
+          const update = async (status, value) => {
+            const response = await fetch(`${worker}/update-status`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: lead.id, status, value }),
+            });
+            if (!response.ok) throw new Error(`POST /update-status failed for ${status}: ${response.status}`);
+          };
+
+          await update('CONTACTED', 1234);
+          let afterUpdate = await (await fetch(`${worker}/leads`)).json();
+          let updated = afterUpdate.find((item) => item.id === lead.id);
+          if (updated?.status !== 'CONTACTED' || Number(updated?.value) !== 1234) {
+            throw new Error('Admin mutation verification failed after CONTACTED/value update');
+          }
+
+          await update('NEW', 0);
+          afterUpdate = await (await fetch(`${worker}/leads`)).json();
+          updated = afterUpdate.find((item) => item.id === lead.id);
+          if (updated?.status !== 'NEW' || Number(updated?.value) !== 0) {
+            throw new Error('Admin mutation cleanup verification failed');
+          }
+
+          await page.goto(`${origin}/admin`, { waitUntil: 'networkidle', timeout: 45_000 });
+          await page.getByText(testName, { exact: true }).waitFor({ timeout: 30_000 });
+          await page.screenshot({ path: 'qa-evidence/admin-test-lead.png', fullPage: true });
+          await browser.close();
+
+          const result = {
+            generatedAt: new Date().toISOString(),
+            testName,
+            leadId: lead.id,
+            formSubmission: 'passed',
+            legacyPayloadCompatibility: 'passed',
+            adminLeadVisibility: 'passed',
+            statusMutation: 'passed',
+            dealValueMutation: 'passed',
+            cleanupState: { status: updated.status, value: updated.value },
+            consoleErrors,
+            failedRequests,
+          };
+          await fs.writeFile('qa-evidence/worker-smoke.json', JSON.stringify(result, null, 2));
+
+          if (consoleErrors.length || failedRequests.length) {
+            throw new Error(`Browser diagnostics failed: ${JSON.stringify({ consoleErrors, failedRequests })}`);
           }
           EOF
 
