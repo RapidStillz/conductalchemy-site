@@ -7,11 +7,7 @@ on:
   pull_request:
     branches:
       - main
-    types:
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
@@ -62,25 +58,20 @@ jobs:
           let lastError = 'preview did not render';
           for (let attempt = 1; attempt <= 30; attempt += 1) {
             try {
-              const response = await page.goto(`${origin}/licensing`, {
-                waitUntil: 'domcontentloaded',
-                timeout: 30_000,
-              });
-              if (!response || response.status() < 200 || response.status() >= 400) {
-                throw new Error(`HTTP ${response?.status() ?? 0}`);
-              }
+              const response = await page.goto(`${origin}/licensing`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+              if (!response || response.status() < 200 || response.status() >= 400) throw new Error(`HTTP ${response?.status() ?? 0}`);
               await page.getByText(marker, { exact: false }).waitFor({ timeout: 10_000 });
               console.log('Current client-rendered licensing content is deployed.');
               await browser.close();
               process.exit(0);
             } catch (error) {
               lastError = error instanceof Error ? error.message : String(error);
-              console.log(`Waiting for rendered current licensing content (attempt ${attempt}/30): ${lastError}`);
+              console.log(`Waiting for current licensing content (${attempt}/30): ${lastError}`);
               await page.waitForTimeout(15_000);
             }
           }
           await browser.close();
-          throw new Error(`Branch preview did not render the expected current-head marker: ${lastError}`);
+          throw new Error(`Branch preview did not render the current marker: ${lastError}`);
           EOF
 
       - name: Capture deployed preview evidence
@@ -91,8 +82,6 @@ jobs:
           import fs from 'node:fs/promises';
 
           const origin = process.env.PREVIEW_ORIGIN;
-          if (!origin) throw new Error('PREVIEW_ORIGIN is required');
-
           const browser = await chromium.launch({ headless: true });
           const findings = [];
 
@@ -100,40 +89,19 @@ jobs:
             const page = await browser.newPage({ viewport });
             const consoleErrors = [];
             const failedRequests = [];
-            page.on('console', (message) => {
-              if (message.type() === 'error') consoleErrors.push(message.text());
-            });
-            page.on('requestfailed', (request) => {
-              failedRequests.push({ url: request.url(), failure: request.failure()?.errorText ?? 'unknown' });
-            });
-
+            page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()); });
+            page.on('requestfailed', (request) => failedRequests.push({ url: request.url(), failure: request.failure()?.errorText ?? 'unknown' }));
             const response = await page.goto(`${origin}${path}`, { waitUntil: 'networkidle', timeout: 45_000 });
             const status = response?.status() ?? 0;
             if (status < 200 || status >= 400) throw new Error(`${path} returned HTTP ${status}`);
             if (interaction) await interaction(page);
-
-            const actualViewport = await page.evaluate(() => ({
-              width: window.innerWidth,
-              height: window.innerHeight,
-              devicePixelRatio: window.devicePixelRatio,
-            }));
+            const actualViewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, devicePixelRatio }));
             if (actualViewport.width !== viewport.width || actualViewport.height !== viewport.height) {
               throw new Error(`${name} viewport mismatch: expected ${viewport.width}x${viewport.height}, got ${actualViewport.width}x${actualViewport.height}`);
             }
-
+            const logo = await page.locator('header .ca-logo').getAttribute('src').catch(() => null);
             await page.screenshot({ path: `qa-evidence/${name}.png`, fullPage: true });
-            const bodyText = (await page.locator('body').innerText()).trim();
-            findings.push({
-              name,
-              url: page.url(),
-              status,
-              title: await page.title(),
-              requestedViewport: viewport,
-              actualViewport,
-              bodyLength: bodyText.length,
-              consoleErrors,
-              failedRequests,
-            });
+            findings.push({ name, url: page.url(), status, title: await page.title(), requestedViewport: viewport, actualViewport, logo, consoleErrors, failedRequests });
             await page.close();
           }
 
@@ -142,12 +110,9 @@ jobs:
           await capture('licensing-artifact-desktop', '/licensing', { width: 1440, height: 1100 }, async (page) => {
             await page.getByRole('button', { name: 'View as Artifact' }).click();
             await page.getByRole('button', { name: 'Exit Artifact' }).waitFor();
-            const mainClass = await page.locator('main').getAttribute('class');
-            if (!mainClass?.includes('artifact')) throw new Error('Artifact Mode class was not applied');
+            if (!(await page.locator('main').getAttribute('class'))?.includes('artifact')) throw new Error('Artifact Mode class was not applied');
             const logoSrc = await page.locator('header .ca-logo').getAttribute('src');
-            if (logoSrc !== '/brand/conduct-alchemy/logo/svg/ca-logo-nav-black.svg') {
-              throw new Error(`Artifact Mode logo mismatch: ${logoSrc}`);
-            }
+            if (logoSrc !== '/brand/conduct-alchemy/logo/svg/ca-logo-nav-black.svg') throw new Error(`Artifact Mode logo mismatch: ${logoSrc}`);
           });
           await capture('admin-desktop', '/admin', { width: 1440, height: 1100 });
 
@@ -176,8 +141,7 @@ jobs:
           const testTrack = `Worker compatibility ${run}`;
           const testUsage = 'Automated QA only — safe to ignore';
           const testBudget = '£5k-£10k';
-
-          const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
           async function fetchLeads() {
             const response = await fetch(`${worker}/leads`, { cache: 'no-store' });
@@ -185,27 +149,27 @@ jobs:
             return response.json();
           }
 
-          async function pollForLead(predicate, description, { attempts = 20, delayMs = 1_500 } = {}) {
-            let lastLeads = [];
+          async function pollForLead(predicate, description, { attempts = 20, delayMs = 1500 } = {}) {
             for (let attempt = 1; attempt <= attempts; attempt += 1) {
-              lastLeads = await fetchLeads();
-              const lead = lastLeads.find(predicate);
+              const lead = (await fetchLeads()).find(predicate);
               if (lead) {
                 console.log(`${description} confirmed on attempt ${attempt}/${attempts}.`);
                 return lead;
               }
               if (attempt < attempts) await sleep(delayMs);
             }
-            throw new Error(`${description} was not observable after ${attempts} attempts over ${attempts * delayMs / 1000}s`);
+            throw new Error(`${description} was not observable after ${attempts} attempts`);
           }
 
           const browser = await chromium.launch({ headless: true });
           const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
           const consoleErrors = [];
           const failedRequests = [];
+          let submittedPayload;
           page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()); });
-          page.on('requestfailed', (request) => {
-            failedRequests.push({ url: request.url(), failure: request.failure()?.errorText ?? 'unknown' });
+          page.on('requestfailed', (request) => failedRequests.push({ url: request.url(), failure: request.failure()?.errorText ?? 'unknown' }));
+          page.on('request', (request) => {
+            if (request.method() === 'POST' && request.url() === `${worker}/submit`) submittedPayload = request.postDataJSON();
           });
 
           await page.goto(`${origin}/licensing`, { waitUntil: 'networkidle', timeout: 45_000 });
@@ -224,46 +188,41 @@ jobs:
           await page.getByRole('heading', { name: 'Clearance request received.' }).waitFor({ timeout: 30_000 });
           await page.screenshot({ path: 'qa-evidence/form-submission-success.png', fullPage: true });
 
-          const lead = await pollForLead(
-            (item) => item.name === testName && item.email === testEmail,
-            'Submitted QA lead',
-          );
-
-          const expected = {
+          if (!submittedPayload) throw new Error('Browser did not capture the /submit request payload');
+          const expectedPayload = {
+            name: testName,
+            email: testEmail,
             track: testTrack,
             usage: 'Ads',
+            projectType: 'Advertising / Brand Campaign',
+            intendedUsage: testUsage,
             duration: '1 Year',
             territory: 'Worldwide',
-            exclusive: true,
+            paidMedia: 'Yes / paid media planned',
             budgetRange: testBudget,
             value: 0,
+            message: testUsage,
+            exclusive: true,
           };
-          for (const [field, value] of Object.entries(expected)) {
-            if (field === 'value' ? Number(lead[field]) !== value : lead[field] !== value) {
-              throw new Error(`Legacy payload mismatch for ${field}: expected ${JSON.stringify(value)}, got ${JSON.stringify(lead[field])}`);
-            }
+          for (const [field, value] of Object.entries(expectedPayload)) {
+            if (submittedPayload[field] !== value) throw new Error(`Submitted payload mismatch for ${field}: expected ${JSON.stringify(value)}, got ${JSON.stringify(submittedPayload[field])}`);
           }
+
+          const lead = await pollForLead((item) => item.name === testName && item.email === testEmail, 'Submitted QA lead');
+          if (lead.track !== testTrack) throw new Error(`Persisted track mismatch: ${JSON.stringify(lead.track)}`);
+          if (Number(lead.value) !== 0) throw new Error(`Persisted legacy value is not numeric zero: ${JSON.stringify(lead.value)}`);
 
           const update = async (status, value) => {
             const response = await fetch(`${worker}/update-status`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: lead.id, status, value }),
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: lead.id, status, value }),
             });
             if (!response.ok) throw new Error(`POST /update-status failed for ${status}: ${response.status}`);
           };
 
           await update('CONTACTED', 1234);
-          const updated = await pollForLead(
-            (item) => item.id === lead.id && item.status === 'CONTACTED' && Number(item.value) === 1234,
-            'Admin CONTACTED/value mutation',
-          );
-
+          const updated = await pollForLead((item) => item.id === lead.id && item.status === 'CONTACTED' && Number(item.value) === 1234, 'Admin CONTACTED/value mutation');
           await update('NEW', 0);
-          const cleaned = await pollForLead(
-            (item) => item.id === lead.id && item.status === 'NEW' && Number(item.value) === 0,
-            'Admin mutation cleanup',
-          );
+          const cleaned = await pollForLead((item) => item.id === lead.id && item.status === 'NEW' && Number(item.value) === 0, 'Admin mutation cleanup');
 
           await page.goto(`${origin}/admin`, { waitUntil: 'networkidle', timeout: 45_000 });
           await page.getByText(testName, { exact: true }).waitFor({ timeout: 30_000 });
@@ -271,23 +230,16 @@ jobs:
           await browser.close();
 
           const result = {
-            generatedAt: new Date().toISOString(),
-            testName,
-            leadId: lead.id,
-            formSubmission: 'passed',
-            legacyPayloadCompatibility: 'passed',
-            adminLeadVisibility: 'passed',
+            generatedAt: new Date().toISOString(), testName, leadId: lead.id,
+            formSubmission: 'passed', submittedPayloadCompatibility: 'passed',
+            persistedLegacyCompatibility: 'passed', adminLeadVisibility: 'passed',
             statusMutation: updated.status === 'CONTACTED' ? 'passed' : 'failed',
             dealValueMutation: Number(updated.value) === 1234 ? 'passed' : 'failed',
             cleanupState: { status: cleaned.status, value: cleaned.value },
-            consistencyStrategy: { attempts: 20, delayMs: 1500 },
-            consoleErrors,
-            failedRequests,
+            consistencyStrategy: { attempts: 20, delayMs: 1500 }, consoleErrors, failedRequests,
           };
           await fs.writeFile('qa-evidence/worker-smoke.json', JSON.stringify(result, null, 2));
-          if (consoleErrors.length || failedRequests.length) {
-            throw new Error(`Browser diagnostics failed: ${JSON.stringify({ consoleErrors, failedRequests })}`);
-          }
+          if (consoleErrors.length || failedRequests.length) throw new Error(`Browser diagnostics failed: ${JSON.stringify({ consoleErrors, failedRequests })}`);
           EOF
 
       - name: Upload browser evidence
