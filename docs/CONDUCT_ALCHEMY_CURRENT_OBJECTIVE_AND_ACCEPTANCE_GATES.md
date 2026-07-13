@@ -94,17 +94,19 @@ Do not use `READY FOR FOUNDER VISUAL REVIEW` while known founder feedback remain
 
 ## Current evidence and remaining gate
 
-Current licensing branch evidence before this synchronisation commit:
+Current licensing branch evidence before this QA-trigger commit:
 
 1. Over-strong rights and licensing-house positioning has been corrected.
 2. The approved Conduct Alchemy logo assets, full `Alchemy` descender and motif treatment are present in the deployed desktop, mobile and Artifact Mode routes.
-3. Build and typecheck validation passed on head `d9d46be46c1e2906e3c27032ae3939c6b543b831`.
-4. Cloudflare successfully deployed that head to the immutable preview `https://a76890de.conductalchemy-site.pages.dev` and the licensing branch preview.
+3. Build and typecheck validation passed on head `ed00e8501d51d82254b3ff928f2b7effd9d2fdf0`.
+4. Cloudflare successfully deployed that head to the immutable preview `https://1d1368da.conductalchemy-site.pages.dev` and the licensing branch preview.
 5. The form continues to use the existing Worker `/submit` route and preserves legacy payload compatibility.
 6. Free-form budget remains in `budgetRange`; legacy `value` remains numeric to protect `/admin` forecast calculations.
 7. `/admin` routes and status/deal-value mutation coverage remain in the QA workflow.
 
 The remaining technical gate is a current-head Preview QA run that retains evidence for desktop, mobile, Artifact Mode, live form submission, Worker payload fields, `/admin` visibility and mutations, cleanup, and browser/request diagnostics.
+
+This commit intentionally refreshes the branch head so both Validate and the branch-push Preview QA workflow must execute against the same SHA. A green result on an older SHA is not acceptable evidence.
 
 Therefore the current state is:
 
