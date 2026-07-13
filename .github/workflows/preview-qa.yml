@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - feat/licensing-premium-conversion
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
   workflow_dispatch:
 
 permissions:
@@ -153,7 +161,7 @@ jobs:
           EOF
 
       - name: Exercise live form and admin Worker compatibility once
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
         run: |
           node --input-type=module <<'EOF'
