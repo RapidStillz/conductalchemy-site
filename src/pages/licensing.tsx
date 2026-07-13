@@ -116,7 +116,7 @@ export default function Licensing() {
           paidMedia,
           deadline,
           budgetRange,
-          value: budgetRange,
+          value: 0,
           message: intendedUsage,
           exclusive,
         }),
