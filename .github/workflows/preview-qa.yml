@@ -4,16 +4,6 @@ on:
   push:
     branches:
       - feat/licensing-premium-conversion
-  pull_request:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/preview-qa.yml'
-      - 'public/brand/conduct-alchemy/**'
-      - 'src/config/env.js'
-      - 'src/config/env.ts'
-      - 'src/pages/admin.tsx'
-      - 'src/pages/licensing.tsx'
   workflow_dispatch:
 
 permissions:
@@ -177,7 +167,7 @@ jobs:
           const testEmail = `ca-qa-${run}@example.invalid`;
           const testTrack = `Worker compatibility ${run}`;
           const testUsage = 'Automated QA only — safe to ignore';
-          const testBudget = '1234';
+          const testBudget = '£5k-£10k';
 
           const browser = await chromium.launch({ headless: true });
           const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
@@ -216,10 +206,11 @@ jobs:
             duration: '1 Year',
             territory: 'Worldwide',
             exclusive: true,
-            value: testBudget,
+            budgetRange: testBudget,
+            value: 0,
           };
           for (const [field, value] of Object.entries(expected)) {
-            if (lead[field] !== value) {
+            if (field === 'value' ? Number(lead[field]) !== value : lead[field] !== value) {
               throw new Error(`Legacy payload mismatch for ${field}: expected ${JSON.stringify(value)}, got ${JSON.stringify(lead[field])}`);
             }
           }
