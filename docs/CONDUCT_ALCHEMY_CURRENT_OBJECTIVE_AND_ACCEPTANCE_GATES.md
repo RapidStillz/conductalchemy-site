@@ -92,19 +92,25 @@ Use only these states:
 
 Do not use `READY FOR FOUNDER VISUAL REVIEW` while known founder feedback remains unimplemented.
 
-## Current known blockers
+## Current evidence and remaining gate
 
-At the time this document was added:
+Current licensing branch evidence before this synchronisation commit:
 
-1. `/licensing` still contains the rejected phrase "premium licensing house".
-2. The currently deployed logo treatment has not been accepted by the founder.
-3. The hero visual remains inconsistent with the founder's prior direction.
-4. The root homepage on `main` remains a placeholder; homepage work exists separately and remains queued after the licensing correction loop.
-5. Real form submission and admin mutation evidence remain incomplete.
+1. Over-strong rights and licensing-house positioning has been corrected.
+2. The approved Conduct Alchemy logo assets, full `Alchemy` descender and motif treatment are present in the deployed desktop, mobile and Artifact Mode routes.
+3. Build and typecheck validation passed on head `d9d46be46c1e2906e3c27032ae3939c6b543b831`.
+4. Cloudflare successfully deployed that head to the immutable preview `https://a76890de.conductalchemy-site.pages.dev` and the licensing branch preview.
+5. The form continues to use the existing Worker `/submit` route and preserves legacy payload compatibility.
+6. Free-form budget remains in `budgetRange`; legacy `value` remains numeric to protect `/admin` forecast calculations.
+7. `/admin` routes and status/deal-value mutation coverage remain in the QA workflow.
+
+The remaining technical gate is a current-head Preview QA run that retains evidence for desktop, mobile, Artifact Mode, live form submission, Worker payload fields, `/admin` visibility and mutations, cleanup, and browser/request diagnostics.
 
 Therefore the current state is:
 
 `NOT READY — BLOCKERS LISTED`
+
+Do not merge until that run is green and founder visual approval is recorded.
 
 ## Controller behaviour
 
