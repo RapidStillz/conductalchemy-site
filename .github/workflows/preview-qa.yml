@@ -153,7 +153,7 @@ jobs:
           EOF
 
       - name: Exercise live form and admin Worker compatibility once
-        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[worker-smoke]')
+        if: github.event_name == 'push'
         shell: bash
         run: |
           node --input-type=module <<'EOF'
