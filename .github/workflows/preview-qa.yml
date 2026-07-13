@@ -177,6 +177,28 @@ jobs:
           const testUsage = 'Automated QA only — safe to ignore';
           const testBudget = '£5k-£10k';
 
+          const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+          async function fetchLeads() {
+            const response = await fetch(`${worker}/leads`, { cache: 'no-store' });
+            if (!response.ok) throw new Error(`GET /leads failed: ${response.status}`);
+            return response.json();
+          }
+
+          async function pollForLead(predicate, description, { attempts = 20, delayMs = 1_500 } = {}) {
+            let lastLeads = [];
+            for (let attempt = 1; attempt <= attempts; attempt += 1) {
+              lastLeads = await fetchLeads();
+              const lead = lastLeads.find(predicate);
+              if (lead) {
+                console.log(`${description} confirmed on attempt ${attempt}/${attempts}.`);
+                return lead;
+              }
+              if (attempt < attempts) await sleep(delayMs);
+            }
+            throw new Error(`${description} was not observable after ${attempts} attempts over ${attempts * delayMs / 1000}s`);
+          }
+
           const browser = await chromium.launch({ headless: true });
           const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
           const consoleErrors = [];
@@ -202,11 +224,10 @@ jobs:
           await page.getByRole('heading', { name: 'Clearance request received.' }).waitFor({ timeout: 30_000 });
           await page.screenshot({ path: 'qa-evidence/form-submission-success.png', fullPage: true });
 
-          const leadsResponse = await fetch(`${worker}/leads`);
-          if (!leadsResponse.ok) throw new Error(`GET /leads failed: ${leadsResponse.status}`);
-          const leads = await leadsResponse.json();
-          const lead = leads.find((item) => item.name === testName);
-          if (!lead) throw new Error('Submitted QA lead was not returned by /leads');
+          const lead = await pollForLead(
+            (item) => item.name === testName && item.email === testEmail,
+            'Submitted QA lead',
+          );
 
           const expected = {
             track: testTrack,
@@ -233,18 +254,16 @@ jobs:
           };
 
           await update('CONTACTED', 1234);
-          let afterUpdate = await (await fetch(`${worker}/leads`)).json();
-          let updated = afterUpdate.find((item) => item.id === lead.id);
-          if (updated?.status !== 'CONTACTED' || Number(updated?.value) !== 1234) {
-            throw new Error('Admin mutation verification failed after CONTACTED/value update');
-          }
+          const updated = await pollForLead(
+            (item) => item.id === lead.id && item.status === 'CONTACTED' && Number(item.value) === 1234,
+            'Admin CONTACTED/value mutation',
+          );
 
           await update('NEW', 0);
-          afterUpdate = await (await fetch(`${worker}/leads`)).json();
-          updated = afterUpdate.find((item) => item.id === lead.id);
-          if (updated?.status !== 'NEW' || Number(updated?.value) !== 0) {
-            throw new Error('Admin mutation cleanup verification failed');
-          }
+          const cleaned = await pollForLead(
+            (item) => item.id === lead.id && item.status === 'NEW' && Number(item.value) === 0,
+            'Admin mutation cleanup',
+          );
 
           await page.goto(`${origin}/admin`, { waitUntil: 'networkidle', timeout: 45_000 });
           await page.getByText(testName, { exact: true }).waitFor({ timeout: 30_000 });
@@ -258,9 +277,10 @@ jobs:
             formSubmission: 'passed',
             legacyPayloadCompatibility: 'passed',
             adminLeadVisibility: 'passed',
-            statusMutation: 'passed',
-            dealValueMutation: 'passed',
-            cleanupState: { status: updated.status, value: updated.value },
+            statusMutation: updated.status === 'CONTACTED' ? 'passed' : 'failed',
+            dealValueMutation: Number(updated.value) === 1234 ? 'passed' : 'failed',
+            cleanupState: { status: cleaned.status, value: cleaned.value },
+            consistencyStrategy: { attempts: 20, delayMs: 1500 },
             consoleErrors,
             failedRequests,
           };
