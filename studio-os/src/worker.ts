@@ -5,15 +5,40 @@ interface Env {
   FOUNDER_TOKEN: string;
 }
 
+interface DashboardSummary {
+  generatedAt: string;
+  counts: {
+    activeProjects: number;
+    assets: number;
+    waitingDecisions: number;
+    knowledgeItems: number;
+  };
+  projects: Project[];
+  recentAssets: Asset[];
+  recentActivity: Array<{
+    id: string;
+    actorId: string;
+    action: string;
+    entityType: string;
+    entityId: string;
+    reason: string | null;
+    createdAt: string;
+  }>;
+  priority: {
+    title: string;
+    rationale: string;
+    projectId: string | null;
+  };
+}
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+};
+
 const json = <T>(body: ApiResponse<T>, status = 200): Response =>
-  Response.json(body, {
-    status,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    },
-  });
+  Response.json(body, { status, headers: corsHeaders });
 
 const now = (): string => new Date().toISOString();
 const id = (): string => crypto.randomUUID();
@@ -42,6 +67,80 @@ async function listProjects(env: Env): Promise<Response> {
   ).all<Project>();
 
   return json({ success: true, data: result.results ?? [] });
+}
+
+async function listAssets(env: Env): Promise<Response> {
+  const result = await env.STUDIO_OS_DB.prepare(
+    `SELECT id, human_id AS humanId, project_id AS projectId, asset_type AS assetType,
+            title, summary, status, version, owner_id AS ownerId,
+            created_at AS createdAt, updated_at AS updatedAt, archived_at AS archivedAt
+       FROM assets
+      WHERE archived_at IS NULL
+      ORDER BY updated_at DESC
+      LIMIT 100`,
+  ).all<Asset>();
+
+  return json({ success: true, data: result.results ?? [] });
+}
+
+async function getDashboard(env: Env): Promise<Response> {
+  const [counts, projects, recentAssets, recentActivity] = await Promise.all([
+    env.STUDIO_OS_DB.prepare(
+      `SELECT
+        (SELECT COUNT(*) FROM projects WHERE archived_at IS NULL AND status = 'active') AS activeProjects,
+        (SELECT COUNT(*) FROM assets WHERE archived_at IS NULL) AS assets,
+        (SELECT COUNT(*) FROM decisions WHERE archived_at IS NULL AND status IN ('proposed', 'waiting')) AS waitingDecisions,
+        (SELECT COUNT(*) FROM knowledge WHERE archived_at IS NULL) AS knowledgeItems`,
+    ).first<DashboardSummary["counts"]>(),
+    env.STUDIO_OS_DB.prepare(
+      `SELECT id, human_id AS humanId, title, summary, status, health,
+              owner_id AS ownerId, priority, created_at AS createdAt,
+              updated_at AS updatedAt, archived_at AS archivedAt
+         FROM projects
+        WHERE archived_at IS NULL
+        ORDER BY priority ASC, updated_at DESC
+        LIMIT 6`,
+    ).all<Project>(),
+    env.STUDIO_OS_DB.prepare(
+      `SELECT id, human_id AS humanId, project_id AS projectId, asset_type AS assetType,
+              title, summary, status, version, owner_id AS ownerId,
+              created_at AS createdAt, updated_at AS updatedAt, archived_at AS archivedAt
+         FROM assets
+        WHERE archived_at IS NULL
+        ORDER BY updated_at DESC
+        LIMIT 8`,
+    ).all<Asset>(),
+    env.STUDIO_OS_DB.prepare(
+      `SELECT id, actor_id AS actorId, action, entity_type AS entityType,
+              entity_id AS entityId, reason, created_at AS createdAt
+         FROM activity_log
+        ORDER BY created_at DESC
+        LIMIT 12`,
+    ).all<DashboardSummary["recentActivity"][number]>(),
+  ]);
+
+  const projectList = projects.results ?? [];
+  const topProject = projectList[0] ?? null;
+  const data: DashboardSummary = {
+    generatedAt: now(),
+    counts: counts ?? { activeProjects: 0, assets: 0, waitingDecisions: 0, knowledgeItems: 0 },
+    projects: projectList,
+    recentAssets: recentAssets.results ?? [],
+    recentActivity: recentActivity.results ?? [],
+    priority: topProject
+      ? {
+          title: topProject.title,
+          rationale: topProject.summary || "Highest-priority active project in Studio OS.",
+          projectId: topProject.id,
+        }
+      : {
+          title: "Create the first Studio OS project",
+          rationale: "The dashboard will recommend the next action once project data exists.",
+          projectId: null,
+        },
+  };
+
+  return json({ success: true, data });
 }
 
 async function createProject(request: Request, env: Env): Promise<Response> {
@@ -128,6 +227,11 @@ async function createAsset(request: Request, env: Env): Promise<Response> {
        (id, event_type, entity_type, entity_id, actor_id, payload_json, created_at)
        VALUES (?, 'ASSET_CREATED', 'asset', ?, ?, ?, ?)`,
     ).bind(id(), assetId, ownerId, JSON.stringify({ title: body.title, humanId }), timestamp),
+    env.STUDIO_OS_DB.prepare(
+      `INSERT INTO activity_log
+       (id, actor_id, action, entity_type, entity_id, reason, after_json, created_at)
+       VALUES (?, ?, 'ASSET_CREATED', 'asset', ?, ?, ?, ?)`,
+    ).bind(id(), ownerId, assetId, "Created through Studio OS API", JSON.stringify(body), timestamp),
   ]);
 
   const created = await env.STUDIO_OS_DB.prepare(
@@ -142,7 +246,7 @@ async function createAsset(request: Request, env: Env): Promise<Response> {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
     if (!authorise(request, env)) {
       return json({ success: false, error: { code: "UNAUTHORISED", message: "A valid Founder token is required." } }, 401);
     }
@@ -150,8 +254,10 @@ export default {
     const { pathname } = new URL(request.url);
 
     try {
+      if (pathname === "/api/dashboard" && request.method === "GET") return getDashboard(env);
       if (pathname === "/api/projects" && request.method === "GET") return listProjects(env);
       if (pathname === "/api/projects" && request.method === "POST") return createProject(request, env);
+      if (pathname === "/api/assets" && request.method === "GET") return listAssets(env);
       if (pathname === "/api/assets" && request.method === "POST") return createAsset(request, env);
       if (pathname === "/api/health" && request.method === "GET") {
         return json({ success: true, data: { service: "studio-os", status: "healthy", checkedAt: now() } });
