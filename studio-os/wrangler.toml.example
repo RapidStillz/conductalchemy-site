@@ -1,0 +1,13 @@
+name = "studio-os-api"
+main = "src/worker.ts"
+compatibility_date = "2026-07-01"
+
+[[d1_databases]]
+binding = "STUDIO_OS_DB"
+database_name = "studio-os-dev"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[vars]
+# Set FOUNDER_TOKEN as a secret in Cloudflare; do not commit a real token.
+# wrangler secret put FOUNDER_TOKEN
