@@ -36,6 +36,7 @@ header h1 { margin: 5px 0 4px; font-size: clamp(30px,4vw,46px); letter-spacing: 
 .eyebrow { margin: 0; color: #9480f4; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; }
 .muted { color: #8e949e; }
 .secondary { background: #1a1e24; color: #e8e9eb; border: 1px solid #2a2f37; }
+.banner-error { padding: 12px 14px; border: 1px solid rgba(245,101,101,.3); border-radius: 10px; background: rgba(245,101,101,.08); }
 
 .priority-card { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding: 26px; border: 1px solid #403967; border-radius: 18px; background: radial-gradient(circle at top right, rgba(148,128,244,.2), transparent 38%), #171922; }
 .priority-card h2 { margin: 8px 0 8px; font-size: 28px; }
@@ -52,6 +53,16 @@ header h1 { margin: 5px 0 4px; font-size: clamp(30px,4vw,46px); letter-spacing: 
 .panel-heading { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
 .panel-heading h2 { margin: 5px 0 0; font-size: 21px; }
 .panel-heading > span { color: #7e858f; font-size: 12px; }
+
+.decisions-panel { margin-bottom: 18px; border-color: #403967; }
+.decision-list { display: grid; gap: 12px; }
+.decision { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding: 18px; border: 1px solid #2c3040; border-radius: 12px; background: #11141a; }
+.decision > div > span { color: #9480f4; font-size: 11px; letter-spacing: .08em; }
+.decision h3 { margin: 6px 0 8px; font-size: 17px; }
+.decision p { max-width: 850px; margin: 5px 0 0; color: #8e949e; font-size: 13px; line-height: 1.5; }
+.decision .proposal { color: #d8dbe0; }
+.decision button { white-space: nowrap; }
+
 .project-list { display: grid; gap: 10px; }
 .project { display: flex; justify-content: space-between; gap: 20px; padding: 16px; border: 1px solid #252a31; border-radius: 12px; background: #101318; }
 .project h3, .asset-grid h3 { margin: 0; font-size: 16px; }
@@ -96,5 +107,6 @@ header h1 { margin: 5px 0 4px; font-size: clamp(30px,4vw,46px); letter-spacing: 
   .grid { grid-template-columns: 1fr; }
   .priority-card { align-items: flex-start; flex-direction: column; }
   .asset-grid { grid-template-columns: 1fr; }
-  .project { flex-direction: column; }
+  .project, .decision { flex-direction: column; align-items: stretch; }
+  .decision button { width: 100%; }
 }
