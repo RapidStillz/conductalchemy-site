@@ -1,0 +1,69 @@
+name: Deploy Studio OS development
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type DEPLOY to confirm the development release
+        required: true
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: de548836cd4491f94d33e30aade38cd2
+  STUDIO_OS_API_URL: https://rapidstillz-studio-os-api.rapidstillz.workers.dev
+
+jobs:
+  deploy:
+    if: ${{ github.event.inputs.confirm == 'DEPLOY' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Worker dependencies
+        working-directory: studio-os
+        run: npm install --no-audit --no-fund
+
+      - name: Validate Worker bundle
+        working-directory: studio-os
+        run: npm run check
+
+      - name: Apply remote D1 migrations
+        working-directory: studio-os
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler d1 migrations apply studio-os-dev --remote --config wrangler.toml
+
+      - name: Deploy Studio OS Worker
+        working-directory: studio-os
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy --config wrangler.toml
+
+      - name: Build Founder Dashboard
+        working-directory: studio-os/dashboard
+        env:
+          VITE_STUDIO_OS_API_URL: ${{ env.STUDIO_OS_API_URL }}
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Deploy Founder Dashboard preview
+        working-directory: studio-os
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler pages deploy dashboard/dist --project-name=rapidstillz-studio-os-dashboard --branch=studio-os-preview
+
+      - name: Verify public health endpoint
+        run: |
+          response=$(curl --fail --silent --show-error "$STUDIO_OS_API_URL/api/health")
+          echo "$response"
+          echo "$response" | grep -q '"success":true'
