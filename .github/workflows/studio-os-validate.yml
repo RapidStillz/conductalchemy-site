@@ -1,0 +1,47 @@
+name: Studio OS validation
+
+on:
+  pull_request:
+    paths:
+      - "studio-os/**"
+      - ".github/workflows/studio-os-validate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            studio-os/package.json
+            studio-os/dashboard/package.json
+
+      - name: Validate Worker bundle
+        working-directory: studio-os
+        run: |
+          npm install --no-audit --no-fund
+          npm run check
+
+      - name: Build Founder Dashboard
+        working-directory: studio-os/dashboard
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Validate migrations are ordered
+        working-directory: studio-os
+        run: |
+          test -f migrations/0001_core.sql
+          test -f migrations/0002_conduct_alchemy_seed.sql
+          grep -q "CREATE TABLE IF NOT EXISTS projects" migrations/0001_core.sql
+          grep -q "Conduct Alchemy" migrations/0002_conduct_alchemy_seed.sql
