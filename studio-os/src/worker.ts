@@ -5,15 +5,14 @@ interface Env {
   FOUNDER_TOKEN: string;
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
+};
+
 const json = <T>(body: ApiResponse<T>, status = 200): Response =>
-  Response.json(body, {
-    status,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type",
-      "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
-    },
-  });
+  Response.json(body, { status, headers: corsHeaders });
 
 const now = (): string => new Date().toISOString();
 const id = (): string => crypto.randomUUID();
@@ -274,7 +273,7 @@ async function dashboard(env: Env): Promise<Response> {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
     if (!authorise(request, env)) return json({ success: false, error: { code: "UNAUTHORISED", message: "A valid Founder token is required." } }, 401);
 
     const { pathname } = new URL(request.url);
