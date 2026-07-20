@@ -62,8 +62,18 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler pages deploy dashboard/dist --project-name=rapidstillz-studio-os-dashboard --branch=studio-os-preview
 
-      - name: Verify public health endpoint
+      - name: Verify protected API is reachable
         run: |
-          response=$(curl --fail --silent --show-error "$STUDIO_OS_API_URL/api/health")
+          response_file=$(mktemp)
+          status=$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' "$STUDIO_OS_API_URL/api/health")
+          response=$(cat "$response_file")
           echo "$response"
-          echo "$response" | grep -q '"success":true'
+
+          if [ "$status" = "200" ]; then
+            echo "$response" | grep -q '"success":true'
+          elif [ "$status" = "401" ]; then
+            echo "$response" | grep -q '"code":"UNAUTHORISED"'
+          else
+            echo "Unexpected health endpoint status: $status" >&2
+            exit 1
+          fi
