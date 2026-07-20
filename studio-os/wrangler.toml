@@ -1,0 +1,13 @@
+name = "rapidstillz-studio-os-api"
+main = "src/worker.ts"
+compatibility_date = "2026-07-01"
+account_id = "de548836cd4491f94d33e30aade38cd2"
+
+[[d1_databases]]
+binding = "STUDIO_OS_DB"
+database_name = "studio-os-dev"
+database_id = "365ed61b-6320-472f-a0de-2016bff615fc"
+migrations_dir = "migrations"
+
+[vars]
+# FOUNDER_TOKEN must be configured as a Cloudflare secret.
