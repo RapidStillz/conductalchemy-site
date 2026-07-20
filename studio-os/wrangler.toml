@@ -9,5 +9,5 @@ database_name = "studio-os-dev"
 database_id = "365ed61b-6320-472f-a0de-2016bff615fc"
 migrations_dir = "migrations"
 
-[vars]
-# FOUNDER_TOKEN must be configured as a Cloudflare secret.
+[secrets]
+required = ["FOUNDER_TOKEN"]
