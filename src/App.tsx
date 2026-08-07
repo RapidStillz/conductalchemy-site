@@ -72,9 +72,6 @@ function Home() {
                   <h3>{track.title}</h3>
                   <p>{track.note}</p>
                 </div>
-                <button className="text-button" type="button" aria-label={`Preview ${track.title}`}>
-                  Preview soon <span aria-hidden="true">↗</span>
-                </button>
               </article>
             ))}
           </div>
