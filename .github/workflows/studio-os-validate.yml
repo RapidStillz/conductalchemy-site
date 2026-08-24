@@ -1,6 +1,13 @@
 name: Studio OS validation
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "studio-os/**"
+      - "docs/STUDIO_OS_START_HERE.md"
+      - ".github/workflows/studio-os-validate.yml"
   pull_request:
     paths:
       - "studio-os/**"
