@@ -1,0 +1,23 @@
+{
+  "package": "Conduct Alchemy Official Logo Asset Patch v1",
+  "purpose": "Drop into RapidStillz/conductalchemy-site so CSS-created logo marks can be replaced with approved assets.",
+  "root_path": "public/brand/conduct-alchemy/",
+  "approved_logo_rules": {
+    "primary_full_lockup": "motif + Conduct Alchemy wordmark + divider + FORGED IN RESONANCE",
+    "horizontal_lockup": "motif + Conduct Alchemy wordmark only; no divider; no strapline",
+    "motif_only": "symbol only; use for favicon, loader, app/social icon, small UI marks"
+  },
+  "recommended_implementation_files": {
+    "dark_header_logo": "/brand/conduct-alchemy/logo/svg/ca-logo-horizontal-white.svg",
+    "light_header_logo": "/brand/conduct-alchemy/logo/svg/ca-logo-horizontal-black.svg",
+    "dark_nav_logo": "/brand/conduct-alchemy/logo/svg/ca-logo-nav-white.svg",
+    "light_nav_logo": "/brand/conduct-alchemy/logo/svg/ca-logo-nav-black.svg",
+    "dark_hero_primary": "/brand/conduct-alchemy/logo/svg/ca-logo-primary-white.svg",
+    "light_hero_primary": "/brand/conduct-alchemy/logo/svg/ca-logo-primary-black.svg",
+    "motif_dark_ui": "/brand/conduct-alchemy/marks/svg/ca-motif-vector-white.svg",
+    "motif_light_ui": "/brand/conduct-alchemy/marks/svg/ca-motif-vector.svg",
+    "favicon_ico": "/brand/conduct-alchemy/favicons/favicon.ico",
+    "apple_touch_icon": "/brand/conduct-alchemy/favicons/apple-touch-icon.png"
+  },
+  "do_not_use": "Do not recreate the motif with CSS except as an emergency placeholder. Use the official assets above."
+}
