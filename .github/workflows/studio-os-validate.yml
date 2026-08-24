@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "studio-os/**"
+      - "docs/STUDIO_OS_START_HERE.md"
       - ".github/workflows/studio-os-validate.yml"
   workflow_dispatch:
 
@@ -26,7 +27,7 @@ jobs:
             studio-os/package.json
             studio-os/dashboard/package.json
 
-      - name: Validate Worker bundle
+      - name: Validate Worker bundle and component governance
         working-directory: studio-os
         run: |
           npm install --no-audit --no-fund
@@ -43,5 +44,8 @@ jobs:
         run: |
           test -f migrations/0001_core.sql
           test -f migrations/0002_conduct_alchemy_seed.sql
+          test -f migrations/0003_governed_components.sql
           grep -q "CREATE TABLE IF NOT EXISTS projects" migrations/0001_core.sql
           grep -q "Conduct Alchemy" migrations/0002_conduct_alchemy_seed.sql
+          grep -q "CREATE TABLE IF NOT EXISTS component_evaluations" migrations/0003_governed_components.sql
+          grep -q "CREATE TABLE IF NOT EXISTS execution_receipts" migrations/0003_governed_components.sql
