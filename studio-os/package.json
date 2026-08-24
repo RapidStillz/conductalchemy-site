@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "check": "esbuild src/worker.ts --bundle --format=esm --platform=browser --outfile=.validation/worker.js",
+    "check": "npm run validate:components && esbuild src/worker.ts --bundle --format=esm --platform=browser --outfile=.validation/worker.js",
+    "validate:components": "node scripts/validate-components.mjs",
     "dev": "wrangler dev --config wrangler.toml",
     "deploy": "wrangler deploy --config wrangler.toml",
     "db:migrate:local": "wrangler d1 migrations apply studio-os-dev --local --config wrangler.toml",
